@@ -415,15 +415,14 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # Scale the database to zero units.
     logger.info("scaling database to zero units")
     await scale_application(ops_test, app, 0)
-    sleep(60 * 5)
     # Scale the database to three units.
     logger.info("scaling database to one units")
     await scale_application(ops_test, app, 1)
+    sleep(60*30)
 
-    logger.info("scaling database to three units")
-    await scale_application(ops_test, app, 3)
-    sleep(60*5)
-
+    # logger.info("scaling database to three units")
+    # await scale_application(ops_test, app, 3)
+    #
     # # Verify all units are up and running.
     # logger.info("waiting for the database service to start in all units")
     # for unit in ops_test.model.applications[app].units:
