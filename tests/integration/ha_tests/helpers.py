@@ -1,6 +1,7 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
+import logging
 import os
 import string
 import subprocess
@@ -37,6 +38,7 @@ from ..helpers import (
 )
 
 PORT = 5432
+logger = logging.getLogger(__name__)
 
 
 class MemberNotListedOnClusterError(Exception):
@@ -760,7 +762,8 @@ async def stop_continuous_writes(ops_test: OpsTest) -> int:
     action = await action.wait()
     return int(action.results["writes"])
 
-# def get_host_path(ops_test: OpsTest, unit_name: str) -> None:
-#     subprocess.check_output(
-#         " ".join(["kubectl", "apply", "-f", temp_file.name]), shell=True, env=env
-#     )
+def get_host_path(ops_test: OpsTest, unit_name: str) -> None:
+    env = os.environ
+    env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
+    synnet_output =subprocess.check_output(" ".join(["kubectl", "get", "pv"]), shell=True, env=env)
+    logger.info(f"--------------  {synnet_output}")

@@ -40,7 +40,7 @@ from .helpers import (
     modify_pebble_restart_delay,
     remove_instance_isolation,
     send_signal_to_process,
-    start_continuous_writes,
+    start_continuous_writes, get_host_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -407,10 +407,11 @@ async def test_network_cut(
 async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     """Scale the database to zero units and scale up again."""
     # Locate primary unit.
-    app = await app_name(ops_test)
-    logger.info(f"--- {ops_test.model.name}")
+    # app = await app_name(ops_test)
+    # logger.info(f"--- {ops_test.model.name}")
     # second_hostpath=
     # original_hostpath=
+    get_host_path(ops_test, "")
     sleep(60*20)
 
     # Start an application that continuously writes data to the database.
