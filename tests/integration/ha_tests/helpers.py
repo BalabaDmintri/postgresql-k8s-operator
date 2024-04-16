@@ -765,5 +765,5 @@ async def stop_continuous_writes(ops_test: OpsTest) -> int:
 def get_host_path(ops_test: OpsTest, unit_name: str) -> None:
     env = os.environ
     env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
-    synnet_output =subprocess.check_output(" ".join(["kubectl", "get", "pv"]), shell=True, env=env)
+    synnet_output =subprocess.check_output(" ".join(["kubectl", "get", "pv"]), env=env)
     logger.info(f"--------------  {synnet_output}")
