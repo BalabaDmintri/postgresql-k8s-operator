@@ -759,3 +759,8 @@ async def stop_continuous_writes(ops_test: OpsTest) -> int:
     )
     action = await action.wait()
     return int(action.results["writes"])
+
+# def get_host_path(ops_test: OpsTest, unit_name: str) -> None:
+#     subprocess.check_output(
+#         " ".join(["kubectl", "apply", "-f", temp_file.name]), shell=True, env=env
+#     )

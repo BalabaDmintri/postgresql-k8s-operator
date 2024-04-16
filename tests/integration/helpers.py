@@ -32,6 +32,7 @@ from tenacity import (
 CHARM_SERIES = "jammy"
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 DATABASE_APP_NAME = METADATA["name"]
+SECOND_CLUSTER_APP_NAME = f"{DATABASE_APP_NAME}+second-cluster"
 APPLICATION_NAME = "postgresql-test-app"
 STORAGE_PATH = METADATA["storage"]["pgdata"]["location"]
 
@@ -74,24 +75,36 @@ async def build_and_deploy(
         "postgresql-image": METADATA["resources"]["postgresql-image"]["upstream-source"],
     }
     (
-        await ops_test.model.deploy(
-            charm,
-            resources=resources,
-            application_name=database_app_name,
-            trust=True,
-            num_units=num_units,
-            series=CHARM_SERIES,
-            config={"profile": "testing"},
-        ),
+        await asyncio.gather(
+            ops_test.model.deploy(
+                charm,
+                resources=resources,
+                application_name=database_app_name,
+                trust=True,
+                num_units=num_units,
+                series=CHARM_SERIES,
+                config={"profile": "testing"},
+            ),
+            ops_test.model.deploy(
+                charm,
+                resources=resources,
+                application_name=SECOND_CLUSTER_APP_NAME,
+                trust=True,
+                num_units=1,
+                series=CHARM_SERIES,
+                config={"profile": "testing"},
+            ),
+
+        )
     )
     if wait_for_idle:
         # Wait until the PostgreSQL charm is successfully deployed.
         await ops_test.model.wait_for_idle(
-            apps=[database_app_name],
+            apps=[database_app_name, SECOND_CLUSTER_APP_NAME],
             status=status,
             raise_on_blocked=True,
             timeout=1000,
-            wait_for_exact_units=num_units,
+            wait_for_exact_units=num_units+1,
         )
 
 
