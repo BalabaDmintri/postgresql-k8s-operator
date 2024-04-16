@@ -412,7 +412,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # second_hostpath=
     # original_hostpath=
     get_host_path(ops_test, "")
-    sleep(60*20)
+    # sleep(60*20)
 
     # Start an application that continuously writes data to the database.
     # await start_continuous_writes(ops_test, app)
