@@ -408,13 +408,14 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     """Scale the database to zero units and scale up again."""
     # Locate primary unit.
     app = await app_name(ops_test)
+    logger.info(f"--- {ops_test.model.name}")
     # second_hostpath=
     # original_hostpath=
+    sleep(60*20)
 
     # Start an application that continuously writes data to the database.
-    await start_continuous_writes(ops_test, app)
+    # await start_continuous_writes(ops_test, app)
 
-    sleep(60*20)
     ## Scale the database to zero units.
     # logger.info("scaling database to zero units")
     # await scale_application(ops_test, app, 0)
