@@ -766,6 +766,8 @@ def get_host_path(ops_test: OpsTest, unit_name: str) -> None:
     env = os.environ
     env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
     synnet_output = subprocess.check_output(["kubectl", "get", "pv"], env=env)
+    aa = synnet_output.decode("utf-8")
     logger.info(f"-------------- 1 ------------")
-    logger.info(f"{synnet_output}")
+    for line in aa.splitlines():
+        logger.info(f"{line}")
     logger.info(f"-------------- 2 ------------")
