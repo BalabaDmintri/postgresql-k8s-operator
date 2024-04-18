@@ -770,13 +770,5 @@ def get_host_path(ops_test: OpsTest, unit_name: str) -> None:
                                                                            ".spec.hostPath.path}{\"\\n\"}{end}'"], env=env)
     logger.info(f"-------------- source ------------ {synnet_output}")
     aa = "".join(synnet_output.decode("utf-8").split())
-    logger.info(f"-------------- encode ------------ {aa}")
-    logger.info(f"-------------- 1 ------------")
-    lines = aa.splitlines()
-    logger.info(f" -------  len(lines)={len(lines)}")
-    logger.info(f" -------  lines={lines}")
-    hostpath = lines[1].split(" ")[1]
-    logger.info(f"-------------- 2 ------------ hostpath={hostpath}")
-
-    # for lines in aa.splitlines():
-    #     logger.info(f"{line}")
+    for v in aa.splitlines():
+        logger.info(f"--------------- {v}")
