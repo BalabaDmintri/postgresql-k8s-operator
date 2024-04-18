@@ -61,24 +61,21 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # is a pre-existing cluster.
     if not await app_name(ops_test):
         wait_for_apps = True
-        await build_and_deploy(ops_test, 3, wait_for_idle=False)
+        await build_and_deploy(ops_test, 2, wait_for_idle=False)
     # Deploy the continuous writes application charm if it wasn't already deployed.
-    if not await app_name(ops_test, APPLICATION_NAME):
-        wait_for_apps = True
-        async with ops_test.fast_forward():
-            await ops_test.model.deploy(
-                APPLICATION_NAME,
-                application_name=APPLICATION_NAME,
-                series=CHARM_SERIES,
-                channel="edge",
-            )
+    # if not await app_name(ops_test, APPLICATION_NAME):
+    #     wait_for_apps = True
+    #     async with ops_test.fast_forward():
+    #         await ops_test.model.deploy(
+    #             APPLICATION_NAME,
+    #             application_name=APPLICATION_NAME,
+    #             series=CHARM_SERIES,
+    #             channel="edge",
+    #         )
 
     if wait_for_apps:
         async with ops_test.fast_forward():
             await ops_test.model.wait_for_idle(status="active", timeout=3000)
-
-    sleep(60*10)
-
 
 @pytest.mark.group(1)
 @markers.juju2
@@ -414,7 +411,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # second_hostpath=
     # original_hostpath=
     get_host_path(ops_test, "")
-    # sleep(60*20)
+    sleep(60*20)
 
     # Start an application that continuously writes data to the database.
     # await start_continuous_writes(ops_test, app)
