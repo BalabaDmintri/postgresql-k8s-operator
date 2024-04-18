@@ -774,9 +774,8 @@ def get_host_path(ops_test: OpsTest, unit_name: str) -> None:
     logger.info(f"-------------- encode ------------ {aa}")
     logger.info(f"-------------- 1 ------------")
     lines = aa.splitlines()
-    if len(lines) != 3:
-        logger.error("Invalid syntax--")
-
+    logger.info(f" -------  len(lines)={len(lines)}")
+    logger.info(f" -------  lines={lines}")
     hostpath = lines[1].split(" ")[1]
     logger.info(f"-------------- 2 ------------ hostpath={hostpath}")
 
