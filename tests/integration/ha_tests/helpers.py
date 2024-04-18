@@ -769,6 +769,6 @@ def get_host_path(ops_test: OpsTest, unit_name: str) -> None:
                                                                            ".spec.claimRef.name}{\"\\t\"}{"
                                                                            ".spec.hostPath.path}{\"\\n\"}{end}'"], env=env)
     logger.info(f"-------------- source ------------ {synnet_output}")
-    aa = " ".join(synnet_output.decode("utf-8").split())
+    aa = synnet_output.decode("utf-8")
     for v in aa.splitlines():
         logger.info(f"--------------- {v}")
