@@ -771,7 +771,7 @@ def get_host_path(ops_test: OpsTest, unit_name: str) -> None:
     logger.info(f"-------------- source ------------ {synnet_output}")
     aa = " ".join(synnet_output.decode("utf-8").split())
     for v in aa.splitlines():
-        if "controller-0" in v:
+        if "postgresql-k8s-0" in v:
             logger.info(f"--------------- {v}")
             arr = v.split(" ")
             for a in arr:
