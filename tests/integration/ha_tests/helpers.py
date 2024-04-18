@@ -767,8 +767,7 @@ def get_host_path(ops_test: OpsTest, unit_name: str) -> None:
     env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
     synnet_output = subprocess.check_output(["kubectl", "get", "pv", "-o", "jsonpath='{range .items[*]}{"
                                                                            ".spec.claimRef.name}{\"\\t\"}{"
-                                                                           ".spec.hostPath.path}{\"\\n\"}{end}'",
-                                                                           "|egrep -i 'storage-controller-0'"], env=env)
+                                                                           ".spec.hostPath.path}{\"\\n\"}{end}'"], env=env)
     logger.info(f"-------------- source ------------ {synnet_output}")
     aa = "".join(synnet_output.decode("utf-8").split())
     logger.info(f"-------------- encode ------------ {aa}")
