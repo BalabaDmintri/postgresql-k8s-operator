@@ -108,7 +108,7 @@ async def change_patroni_setting(ops_test: OpsTest, setting: str, value: int) ->
 
 
 async def change_wal_settings(
-    ops_test: OpsTest, unit_name: str, max_wal_size: int, min_wal_size, wal_keep_segments
+        ops_test: OpsTest, unit_name: str, max_wal_size: int, min_wal_size, wal_keep_segments
 ) -> None:
     """Change WAL settings in the unit.
 
@@ -169,7 +169,7 @@ def get_member_lag(cluster: Dict, member_name: str) -> int:
 
 
 async def is_member_isolated(
-    ops_test: OpsTest, not_isolated_member: str, isolated_member: str
+        ops_test: OpsTest, not_isolated_member: str, isolated_member: str
 ) -> bool:
     """Check whether the member is isolated from the cluster."""
     # Check if the lag is too high.
@@ -192,7 +192,7 @@ async def check_writes(ops_test) -> int:
     actual_writes, max_number_written = await count_writes(ops_test)
     for member, count in actual_writes.items():
         assert (
-            count == max_number_written[member]
+                count == max_number_written[member]
         ), f"{member}: writes to the db were missed: count of actual writes ({count}) on {member} different from the max number written ({max_number_written[member]})."
         assert total_expected_writes == count, f"{member}: writes to the db were missed."
     return total_expected_writes
@@ -206,17 +206,17 @@ async def are_writes_increasing(ops_test, down_unit: str = None) -> None:
             with attempt:
                 more_writes, _ = await count_writes(ops_test, down_unit=down_unit)
                 assert (
-                    more_writes[member] > count
+                        more_writes[member] > count
                 ), f"{member}: writes not continuing to DB (current writes: {more_writes[member]} - previous writes: {count})"
 
 
 def copy_file_into_pod(
-    client: kubernetes.client.api.core_v1_api.CoreV1Api,
-    namespace: str,
-    pod_name: str,
-    container_name: str,
-    destination_path: str,
-    source_path: str,
+        client: kubernetes.client.api.core_v1_api.CoreV1Api,
+        namespace: str,
+        pod_name: str,
+        container_name: str,
+        destination_path: str,
+        source_path: str,
 ) -> None:
     """Copy file contents into pod.
 
@@ -267,7 +267,7 @@ def copy_file_into_pod(
 
 
 async def count_writes(
-    ops_test: OpsTest, down_unit: str = None
+        ops_test: OpsTest, down_unit: str = None
 ) -> Tuple[Dict[str, int], Dict[str, int]]:
     """Count the number of writes in the database."""
     app = await app_name(ops_test)
@@ -282,7 +282,7 @@ async def count_writes(
     maximum = {}
     for member in cluster["members"]:
         if member["role"] != "replica" and member["host"].split(".")[0] != (
-            down_unit or ""
+                down_unit or ""
         ).replace("/", "-"):
             host = member["host"]
 
@@ -427,7 +427,7 @@ async def is_connection_possible(ops_test: OpsTest, unit_name: str) -> bool:
         for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
             with attempt:
                 with db_connect(
-                    host=address, password=password
+                        host=address, password=password
                 ) as connection, connection.cursor() as cursor:
                     cursor.execute("SELECT 1;")
                     success = cursor.fetchone()[0] == 1
@@ -487,7 +487,7 @@ def isolate_instance_from_cluster(ops_test: OpsTest, unit_name: str) -> None:
     """Apply a NetworkChaos file to use chaos-mesh to simulate a network cut."""
     with tempfile.NamedTemporaryFile() as temp_file:
         with open(
-            "tests/integration/ha_tests/manifests/chaos_network_loss.yml", "r"
+                "tests/integration/ha_tests/manifests/chaos_network_loss.yml", "r"
         ) as chaos_network_loss_file:
             template = string.Template(chaos_network_loss_file.read())
             chaos_network_loss = template.substitute(
@@ -506,10 +506,10 @@ def isolate_instance_from_cluster(ops_test: OpsTest, unit_name: str) -> None:
 
 
 def modify_pebble_restart_delay(
-    ops_test: OpsTest,
-    unit_name: str,
-    pebble_plan_path: str,
-    ensure_replan: bool = False,
+        ops_test: OpsTest,
+        unit_name: str,
+        pebble_plan_path: str,
+        ensure_replan: bool = False,
 ) -> None:
     """Modify the pebble restart delay of the underlying process.
 
@@ -553,7 +553,7 @@ def modify_pebble_restart_delay(
     )
     response.run_forever(timeout=5)
     assert (
-        response.returncode == 0
+            response.returncode == 0
     ), f"Failed to add to pebble layer, unit={unit_name}, container={container_name}, service={service_name}"
 
     for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
@@ -574,7 +574,7 @@ def modify_pebble_restart_delay(
             response.run_forever(timeout=60)
             if ensure_replan:
                 assert (
-                    response.returncode == 0
+                        response.returncode == 0
                 ), f"Failed to replan pebble layer, unit={unit_name}, container={container_name}, service={service_name}"
 
 
@@ -621,7 +621,7 @@ async def is_secondary_up_to_date(ops_test: OpsTest, unit_name: str, expected_wr
         for attempt in Retrying(stop=stop_after_delay(60 * 3), wait=wait_fixed(3)):
             with attempt:
                 with psycopg2.connect(
-                    connection_string
+                        connection_string
                 ) as connection, connection.cursor() as cursor:
                     cursor.execute("SELECT COUNT(number), MAX(number) FROM continuous_writes;")
                     results = cursor.fetchone()
@@ -640,7 +640,7 @@ async def is_secondary_up_to_date(ops_test: OpsTest, unit_name: str, expected_wr
 
 
 async def send_signal_to_process(
-    ops_test: OpsTest, unit_name: str, process: str, signal: str, use_ssh: bool = False
+        ops_test: OpsTest, unit_name: str, process: str, signal: str, use_ssh: bool = False
 ) -> None:
     """Send a signal to an OS process on a specific unit.
 
@@ -730,8 +730,8 @@ async def start_continuous_writes(ops_test: OpsTest, app: str) -> None:
         relation
         for relation in ops_test.model.applications[app].relations
         if not relation.is_peer
-        and f"{relation.requires.application_name}:{relation.requires.name}"
-        == f"{APPLICATION_NAME}:first-database"
+           and f"{relation.requires.application_name}:{relation.requires.name}"
+           == f"{APPLICATION_NAME}:first-database"
     ]
     if not relations:
         await ops_test.model.relate(app, f"{APPLICATION_NAME}:first-database")
@@ -762,18 +762,28 @@ async def stop_continuous_writes(ops_test: OpsTest) -> int:
     action = await action.wait()
     return int(action.results["writes"])
 
-def get_host_path(ops_test: OpsTest, unit_name: str) -> None:
+
+def get_host_path(unit_name: str):
     env = os.environ
     env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
-    synnet_output = subprocess.check_output(["kubectl", "get", "pv", "-o", "jsonpath='{range .items[*]}{"
-                                                                           ".spec.claimRef.name}{\"\\t\"}{"
-                                                                           ".spec.hostPath.path}{\"\\n\"}{end}'"],
-                                            env=env, text=True)
-    logger.info(f"-------------- source ------------ {synnet_output}")
-    for line in synnet_output.splitlines():
-        if "postgresql-k8s-0" in line:
-            logger.info(f"--------------- {line}")
+    items = subprocess.check_output(["kubectl", "get", "pv", "-o", "jsonpath='{range .items[*]}{"
+                                                                   ".metadata.name}{\"\\t\"}{"
+                                                                   ".spec.claimRef.name}{\"\\t\"}{"
+                                                                   ".spec.hostPath.path}{\"\\n\"}{end}'"],
+                                    env=env, text=True)
+    for line in items.splitlines():
+        if unit_name in line:
             arr = " ".join(line.split()).split(" ")
-            for a in arr:
-                logger.info(f"-arr-------------- {a}")
+            assert len(arr) == 3, "incorrect---------------------------- "
+            return arr[0], arr[2]
 
+    assert False, "could not find hostPath"
+
+
+def replace_original_storage(pv_id: str, replace_host_path: str):
+    env = os.environ
+    env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
+    seq = f"'s/\\(path: [[:digit:]]\\w\\+\\)/path: {replace_host_path}/g'"
+    subprocess.check_output(["kubectl", "get", "pv", pv_id, "-o", "yaml", "|", "sed", seq,
+                             "|", "kubectl", "replace", "-f", "-"],
+                            env=env, text=True)

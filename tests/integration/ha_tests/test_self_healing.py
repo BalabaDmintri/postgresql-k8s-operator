@@ -20,7 +20,7 @@ from ..helpers import (
     get_password,
     get_unit_address,
     run_command_on_unit,
-    scale_application,
+    scale_application, SECOND_CLUSTER_APP_NAME, get_leader_unit,
 )
 from .helpers import (
     are_all_db_processes_down,
@@ -40,7 +40,7 @@ from .helpers import (
     modify_pebble_restart_delay,
     remove_instance_isolation,
     send_signal_to_process,
-    start_continuous_writes, get_host_path,
+    start_continuous_writes, get_host_path, replace_original_storage,
 )
 
 logger = logging.getLogger(__name__)
@@ -406,11 +406,26 @@ async def test_network_cut(
 async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     """Scale the database to zero units and scale up again."""
     # Locate primary unit.
-    # app = await app_name(ops_test)
-    # logger.info(f"--- {ops_test.model.name}")
-    # second_hostpath=
-    # original_hostpath=
-    get_host_path(ops_test, "")
+    app = await app_name(ops_test)
+    second_app = await app_name(ops_test,application_name=SECOND_CLUSTER_APP_NAME)
+    logger.info("------------ original ---")
+    original_leader_unit = await get_leader_unit(ops_test, APP_NAME)
+    second_leader_unit = await get_leader_unit(ops_test, SECOND_CLUSTER_APP_NAME)
+    original_host_path, original_pv_id = get_host_path(original_leader_unit.name)
+    logger.info(f"----------- original_pv_id = {original_pv_id}")
+    logger.info(f"----------- original_host_path = {original_host_path}")
+    second_host_path, second_pv_id = get_host_path(second_leader_unit.name)
+    logger.info(f"----------- second_pv_id = {second_pv_id}")
+    logger.info(f"----------- second_host_path = {second_host_path}")
+
+    logger.info("------------ replace ---")
+    replace_original_storage(original_pv_id, second_host_path)
+    original_host_path, original_pv_id = get_host_path(original_leader_unit.name)
+    logger.info(f"----------- original_pv_id = {original_pv_id}")
+    logger.info(f"----------- original_host_path = {original_host_path}")
+    second_host_path, second_pv_id = get_host_path(second_leader_unit.name)
+    logger.info(f"----------- second_pv_id = {second_pv_id}")
+    logger.info(f"----------- second_host_path = {second_host_path}")
     sleep(60*20)
 
     # Start an application that continuously writes data to the database.
