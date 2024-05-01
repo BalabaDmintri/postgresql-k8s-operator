@@ -447,7 +447,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
 
 
 @pytest.mark.group(1)
-async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
+async def test_scaling(ops_test: OpsTest, continuous_writes) -> None:
     """Scale the database to zero units and scale up again."""
     # Locate primary unit.
     app = await app_name(ops_test)
