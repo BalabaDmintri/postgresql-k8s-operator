@@ -5,6 +5,7 @@ import asyncio
 import logging
 from time import sleep
 
+import psycopg2
 import pytest
 from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_delay, wait_fixed
@@ -20,7 +21,7 @@ from ..helpers import (
     get_password,
     get_unit_address,
     run_command_on_unit,
-    scale_application,
+    scale_application, execute_query_on_unit,
 )
 from .helpers import (
     are_all_db_processes_down,
@@ -462,7 +463,8 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     with db_connect(host=address, password=password) as connection:
         connection.autocommit = True
         connection.cursor().execute(
-            "CREATE TABLE IF NOT EXISTS backup_table_1 (test_collumn INT );"
+            "CREATE TABLE IF NOT EXISTS backup_table_1 (test_collumn INT );"+
+            "INSERT INTO backup_table_1(test_collumn)VALUES(11);"
         )
     connection.close()
 
@@ -473,9 +475,9 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     password = await get_password(ops_test, database_app_name=database_app_name)
     address = await get_unit_address(ops_test, primary)
     logger.info("creating a table in the database")
-    with db_connect(host=address, password=password) as connection:
-        connection.autocommit = True
-        connection.cursor().execute(
-            "CREATE TABLE IF NOT EXISTS backup_table_1 (test_collumn INT );"
-        )
-    connection.close()
+    output = await execute_query_on_unit(
+        address,
+        password,
+        "SELECT test_collumn FROM backup_table_1;",
+    )
+    logger.info(f"  --   {output}")
