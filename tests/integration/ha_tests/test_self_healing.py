@@ -442,3 +442,40 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # Verify that no writes to the database were missed after stopping the writes.
     logger.info("checking whether no writes to the database were missed after stopping the writes")
     await check_writes(ops_test)
+
+
+
+@pytest.mark.group(1)
+async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
+    """Scale the database to zero units and scale up again."""
+    # Locate primary unit.
+    app = await app_name(ops_test)
+
+    # Start an application that continuously writes data to the database.
+    await start_continuous_writes(ops_test, app)
+
+    database_app_name= "postgresql_test_app_first_database"
+    primary = await get_primary(ops_test, database_app_name)
+    password = await get_password(ops_test, database_app_name=database_app_name)
+    address = await get_unit_address(ops_test, primary)
+    logger.info("creating a table in the database")
+    with db_connect(host=address, password=password) as connection:
+        connection.autocommit = True
+        connection.cursor().execute(
+            "CREATE TABLE IF NOT EXISTS backup_table_1 (test_collumn INT );"
+        )
+    connection.close()
+
+    await ops_test.model.remove_application(app, block_until_done=True)
+    await build_and_deploy(ops_test, 1, wait_for_idle=False)
+
+    primary = await get_primary(ops_test, database_app_name)
+    password = await get_password(ops_test, database_app_name=database_app_name)
+    address = await get_unit_address(ops_test, primary)
+    logger.info("creating a table in the database")
+    with db_connect(host=address, password=password) as connection:
+        connection.autocommit = True
+        connection.cursor().execute(
+            "CREATE TABLE IF NOT EXISTS backup_table_1 (test_collumn INT );"
+        )
+    connection.close()
