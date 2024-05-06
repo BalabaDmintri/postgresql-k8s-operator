@@ -77,6 +77,7 @@ async def test_legacy_endpoint_with_multiple_related_endpoints(ops_test: OpsTest
         raise_on_error=False,
     )
 
+    logger.info(" add relation with modern endpoints")
     app = ops_test.model.applications[APP_NAME]
     async with ops_test.fast_forward():
         await ops_test.model.relate(APP_NAME, f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION}")
@@ -85,16 +86,13 @@ async def test_legacy_endpoint_with_multiple_related_endpoints(ops_test: OpsTest
             timeout=1500,
         )
 
-    # Sleep for a while to allow the relation to be established.
+    logger.info(" remove relation with legacy endpoints")
     await ops_test.model.applications[APP_NAME].destroy_relation(
         f"{APP_NAME}:{DB_RELATION}", f"{APPLICATION_APP_NAME}:{DB_RELATION}"
     )
-    await ops_test.model.wait_for_idle(
-        status="active",
-        timeout=3000,
-        raise_on_error=False,
-    )
+    await ops_test.model.wait_for_idle(status="active",timeout=3000)
 
+    logger.info(" add relation with legacy endpoints")
     async with ops_test.fast_forward():
         await ops_test.model.relate(APPLICATION_APP_NAME, f"{APP_NAME}:{DB_RELATION}")
         await ops_test.model.block_until(
@@ -102,41 +100,18 @@ async def test_legacy_endpoint_with_multiple_related_endpoints(ops_test: OpsTest
             timeout=1500,
         )
 
-    await ops_test.model.applications[APP_NAME].destroy_relation(
-        f"{APP_NAME}:{DATABASE_RELATION}", f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION}"
-    )
-    await ops_test.model.wait_for_idle(
-        status="active",
-        timeout=3000,
-        raise_on_error=False,
-    )
+    logger.info(" remove all relations")
+    async with ops_test.fast_forward():
+        await asyncio.gather(
+            ops_test.model.applications[APP_NAME].destroy_relation(
+                f"{APP_NAME}:{DATABASE_RELATION}", f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION}"
+            ),
+            ops_test.model.applications[APP_NAME].destroy_relation(
+                f"{APP_NAME}:{DB_RELATION}", f"{APPLICATION_APP_NAME}:{DB_RELATION}"
+            )
+        )
+    await ops_test.model.wait_for_idle(status="active",timeout=3000)
 
-    await ops_test.model.applications[APP_NAME].destroy_relation(
-        f"{APP_NAME}:{DB_RELATION}", f"{APPLICATION_APP_NAME}:{DB_RELATION}"
-    )
-    await ops_test.model.wait_for_idle(
-        status="active",
-        timeout=3000,
-        raise_on_error=False,
-    )
-
+    logger.info(" add relation with modern endpoints")
     await ops_test.model.relate(APP_NAME, f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION}")
-    await ops_test.model.wait_for_idle(
-        status="active",
-        timeout=3000,
-        raise_on_error=False,
-    )
-    #
-    # finos_waltz_users = [f"relation_id_{relation.id}"]
-    # logger.info(f" check database users existence '{finos_waltz_users}'")
-    # await check_database_users_existence(ops_test, finos_waltz_users, [])
-    #
-    # logger.info(
-    #     f" remove relation: {FINOZ_WALTZ_APP_NAME}:{DB_RELATION} - {APP_NAME}:{DB_RELATION}"
-    # )
-    # await ops_test.model.applications[APP_NAME].remove_relation(
-    #     f"{FINOZ_WALTZ_APP_NAME}:{DB_RELATION}", f"{APP_NAME}:{DB_RELATION}"
-    # )
-    # await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
-    # logger.info(f" check database users not existence '{finos_waltz_users}'")
-    # await check_database_users_existence(ops_test, [], finos_waltz_users)
+    await ops_test.model.wait_for_idle(status="active",timeout=3000)
