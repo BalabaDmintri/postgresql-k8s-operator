@@ -4,10 +4,13 @@
 import asyncio
 import logging
 
+import psycopg2
 import pytest
 from pytest_operator.plugin import OpsTest
+from tenacity import Retrying, stop_after_delay, wait_fixed
 
 from tests.integration.helpers import CHARM_SERIES
+from tests.integration.new_relations.helpers import build_connection_string
 from tests.integration.new_relations.test_new_relations import (
     APPLICATION_APP_NAME,
     DATABASE_APP_METADATA,
@@ -16,7 +19,7 @@ from tests.integration.relations.helpers import (
     APP_NAME,
     DATABASE_RELATION,
     DB_RELATION,
-    FIRST_DATABASE_RELATION,
+    FIRST_DATABASE_RELATION, get_legacy_db_connection_str,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,6 +71,16 @@ async def test_legacy_endpoint_with_multiple_related_endpoints(ops_test: OpsTest
         timeout=1500,
         raise_on_error=False,
     )
+
+
+    legacy_connection_str = await get_legacy_db_connection_str(
+        ops_test, APPLICATION_APP_NAME, DB_RELATION
+    )
+    logger.info(f" check connect to = {legacy_connection_str}")
+    for attempt in Retrying(stop=stop_after_delay(60 * 3), wait=wait_fixed(10)):
+        with attempt:
+            with psycopg2.connect(legacy_connection_str) as connection:
+                assert connection.status == psycopg2.extensions.STATUS_READY
 
     logger.info(" add relation with modern endpoints")
     app = ops_test.model.applications[APP_NAME]
