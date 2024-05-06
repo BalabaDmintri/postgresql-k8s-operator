@@ -3,14 +3,24 @@
 # See LICENSE file for licensing details.
 import asyncio
 import logging
+
 import pytest
 from pytest_operator.plugin import OpsTest
 
 from tests.integration.helpers import CHARM_SERIES
-from tests.integration.new_relations.test_new_relations import APPLICATION_APP_NAME, DATABASE_APP_METADATA
-from tests.integration.relations.helpers import APP_NAME, DB_RELATION, FIRST_DATABASE_RELATION, DATABASE_RELATION
+from tests.integration.new_relations.test_new_relations import (
+    APPLICATION_APP_NAME,
+    DATABASE_APP_METADATA,
+)
+from tests.integration.relations.helpers import (
+    APP_NAME,
+    DATABASE_RELATION,
+    DB_RELATION,
+    FIRST_DATABASE_RELATION,
+)
 
 logger = logging.getLogger(__name__)
+
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
@@ -45,7 +55,9 @@ async def test_deploy_charms(ops_test: OpsTest, database_charm):
             ),
         )
 
-        await ops_test.model.wait_for_idle(apps=[APP_NAME, APPLICATION_APP_NAME], status="active", timeout=3000)
+        await ops_test.model.wait_for_idle(
+            apps=[APP_NAME, APPLICATION_APP_NAME], status="active", timeout=3000
+        )
 
 
 @pytest.mark.group(1)

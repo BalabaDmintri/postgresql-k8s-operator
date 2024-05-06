@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-from typing import Optional
 
-import yaml
-from pytest_operator.plugin import OpsTest
 
 from ..helpers import METADATA
 from ..new_relations.test_new_relations import (
     APPLICATION_APP_NAME,
 )
-
 
 APP_NAME = METADATA["name"]
 DB_RELATION = "db"
