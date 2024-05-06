@@ -10,8 +10,8 @@ import pytest
 from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_delay, wait_fixed
 
-from tests.integration.helpers import CHARM_SERIES
-from tests.integration.new_relations.helpers import build_connection_string
+from tests.integration.helpers import CHARM_SERIES, get_password, get_primary, get_unit_address
+from tests.integration.new_relations.helpers import build_connection_string, get_application_relation_data
 from tests.integration.new_relations.test_new_relations import (
     APPLICATION_APP_NAME,
     DATABASE_APP_METADATA,
@@ -73,18 +73,25 @@ async def test_legacy_endpoint_with_multiple_related_endpoints(ops_test: OpsTest
         raise_on_error=False,
     )
 
-    logger.info(" sleep--------")
-    sleep(60*10)
-
-    legacy_connection_str = await build_connection_string(
-        ops_test, APPLICATION_APP_NAME, DB_RELATION
+    password = await get_password(ops_test)
+    username = "operator"
+    database = await get_application_relation_data(
+        ops_test,
+        application_name=APP_NAME,
+        relation_name=DB_RELATION,
+        key="database"
     )
+    ip = await get_unit_address(ops_test, unit_name=f"{APP_NAME}/0")
+
+    legacy_connection_str = f"dbname='{database}' user='{username}' host='{ip}' password='{password}' connect_timeout=10"
     logger.info(f" check connect to = {legacy_connection_str}")
     for attempt in Retrying(stop=stop_after_delay(60 * 3), wait=wait_fixed(10)):
         with attempt:
             with psycopg2.connect(legacy_connection_str) as connection:
                 assert connection.status == psycopg2.extensions.STATUS_READY
 
+    logger.info(" sleep--------")
+    sleep(60 * 10)
     logger.info(" add relation with modern endpoints")
     app = ops_test.model.applications[APP_NAME]
     async with ops_test.fast_forward():
