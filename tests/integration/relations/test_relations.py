@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 import asyncio
 import logging
+from time import sleep
 
 import psycopg2
 import pytest
@@ -72,6 +73,8 @@ async def test_legacy_endpoint_with_multiple_related_endpoints(ops_test: OpsTest
         raise_on_error=False,
     )
 
+    logger.info(" sleep--------")
+    sleep(60*10)
 
     legacy_connection_str = await build_connection_string(
         ops_test, APPLICATION_APP_NAME, DB_RELATION
