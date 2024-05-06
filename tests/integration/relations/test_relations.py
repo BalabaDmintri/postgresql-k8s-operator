@@ -73,13 +73,13 @@ async def test_legacy_endpoint_with_multiple_related_endpoints(ops_test: OpsTest
         raise_on_error=False,
     )
 
-    logger.info(" sleep--------")
-    sleep(60*10)
-
     legacy_connection_str = await build_connection_string(
         ops_test, APPLICATION_APP_NAME, DB_RELATION
     )
     logger.info(f" check connect to = {legacy_connection_str}")
+
+    logger.info(" sleep--------")
+    sleep(60*10)
     for attempt in Retrying(stop=stop_after_delay(60 * 3), wait=wait_fixed(10)):
         with attempt:
             with psycopg2.connect(legacy_connection_str) as connection:
