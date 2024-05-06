@@ -57,7 +57,11 @@ async def test_deploy_charms(ops_test: OpsTest, database_charm):
                 application_name=APP_NAME,
                 num_units=1,
                 series=CHARM_SERIES,
-                config={"profile": "testing"},
+                config={
+                    "profile": "testing",
+                    "plugin_unaccent_enable": "True",
+                    "plugin_pg_trgm_enable": "True",
+                },
             ),
         )
 
