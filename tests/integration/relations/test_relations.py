@@ -73,8 +73,8 @@ async def test_legacy_endpoint_with_multiple_related_endpoints(ops_test: OpsTest
     )
 
 
-    legacy_connection_str = await get_legacy_db_connection_str(
-        ops_test, APPLICATION_APP_NAME, DB_RELATION, remote_unit_name=f"{APP_NAME}/0"
+    legacy_connection_str = await build_connection_string(
+        ops_test, APPLICATION_APP_NAME, DB_RELATION
     )
     logger.info(f" check connect to = {legacy_connection_str}")
     for attempt in Retrying(stop=stop_after_delay(60 * 3), wait=wait_fixed(10)):
