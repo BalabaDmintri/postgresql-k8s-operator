@@ -3,34 +3,14 @@
 # See LICENSE file for licensing details.
 import asyncio
 import logging
-import time
-
-import psycopg2
 import pytest
 from pytest_operator.plugin import OpsTest
-from tenacity import Retrying, stop_after_delay, wait_fixed
 
-from ..helpers import (
-    CHARM_SERIES,
-    METADATA,
-    check_database_creation,
-    check_database_users_existence,
-)
-from ..new_relations.test_new_relations import (
-    APPLICATION_APP_NAME,
-    DATABASE_APP_METADATA,
-    build_connection_string,
-)
+from tests.integration.helpers import CHARM_SERIES
+from tests.integration.new_relations.test_new_relations import APPLICATION_APP_NAME, DATABASE_APP_METADATA
+from tests.integration.relations.helpers import APP_NAME, DB_RELATION, FIRST_DATABASE_RELATION, DATABASE_RELATION
 
 logger = logging.getLogger(__name__)
-
-APP_NAME = METADATA["name"]
-# FINOZ_WALTZ_APP_NAME = "finos-waltz-k8s"
-DB_RELATION = "db"
-DATABASE_RELATION = "database"
-FIRST_DATABASE_RELATION = "first-database"
-APP_NAMES = [APP_NAME, APPLICATION_APP_NAME]
-
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
