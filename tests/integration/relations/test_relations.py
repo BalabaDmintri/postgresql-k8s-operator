@@ -20,7 +20,7 @@ from tests.integration.relations.helpers import (
     APP_NAME,
     DATABASE_RELATION,
     DB_RELATION,
-    FIRST_DATABASE_RELATION, get_legacy_db_connection_str,
+    FIRST_DATABASE_RELATION,
 )
 
 logger = logging.getLogger(__name__)
