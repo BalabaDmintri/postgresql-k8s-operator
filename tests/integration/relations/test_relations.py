@@ -101,10 +101,12 @@ async def test_legacy_endpoint_with_multiple_related_endpoints(ops_test: OpsTest
     )
     await ops_test.model.wait_for_idle(status="active", timeout=1500)
 
+    logger.info("---- sleep")
+    sleep(60*5)
     modern_connection_str = await get_database_connect_str(
         ops_test,
         application_name=APP_NAME,
-        relation_name=FIRST_DATABASE_RELATION,
+        relation_name=f"{APPLICATION_APP_NAME}_{FIRST_DATABASE_RELATION}".replace("-", "_"),
     )
     logger.info(f" check connect to = {modern_connection_str}")
     for attempt in Retrying(stop=stop_after_delay(60 * 3), wait=wait_fixed(10)):
