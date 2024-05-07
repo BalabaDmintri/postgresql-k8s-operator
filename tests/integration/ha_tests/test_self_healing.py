@@ -5,6 +5,7 @@ import asyncio
 import logging
 from time import sleep
 
+import psycopg2
 import pytest
 from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_delay, wait_fixed
@@ -20,7 +21,7 @@ from ..helpers import (
     get_password,
     get_unit_address,
     run_command_on_unit,
-    scale_application,
+    scale_application, DATABASE_APP_NAME,
 )
 from .helpers import (
     are_all_db_processes_down,
@@ -42,6 +43,8 @@ from .helpers import (
     send_signal_to_process,
     start_continuous_writes,
 )
+from ..new_relations.helpers import build_connection_string
+from ..new_relations.test_new_relations import FIRST_DATABASE_RELATION_NAME, APPLICATION_APP_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -63,19 +66,51 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         wait_for_apps = True
         await build_and_deploy(ops_test, 1, wait_for_idle=False)
     # Deploy the continuous writes application charm if it wasn't already deployed.
-    # if not await app_name(ops_test, APPLICATION_NAME):
-    #     wait_for_apps = True
-    #     async with ops_test.fast_forward():
-    #         await ops_test.model.deploy(
-    #             APPLICATION_NAME,
-    #             application_name=APPLICATION_NAME,
-    #             series=CHARM_SERIES,
-    #             channel="edge",
-    #         )
+    if not await app_name(ops_test, APPLICATION_NAME):
+        wait_for_apps = True
+        async with ops_test.fast_forward():
+            await ops_test.model.deploy(
+                APPLICATION_NAME,
+                application_name=APPLICATION_NAME,
+                series=CHARM_SERIES,
+                channel="edge",
+            )
 
     if wait_for_apps:
         async with ops_test.fast_forward():
             await ops_test.model.wait_for_idle(status="active", timeout=1000)
+
+    connection_string = await build_connection_string(
+        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
+    )
+
+    # Connect to the database using the read/write endpoint.
+    with psycopg2.connect(connection_string) as connection, connection.cursor() as cursor:
+        # Check that it's possible to write and read data from the database that
+        # was created for the application.
+        connection.autocommit = True
+        cursor.execute("CREATE TABLE test(data TEXT);")
+        cursor.execute("INSERT INTO test(data) VALUES('some data');")
+        cursor.execute("SELECT data FROM test;")
+        data = cursor.fetchone()
+        assert data[0] == "some data"
+
+    await ops_test.model.remove_application(DATABASE_APP_NAME, block_until_done=True)
+
+    wait_for_apps = False
+    await build_and_deploy(ops_test, 1, wait_for_idle=False)
+    if wait_for_apps:
+        async with ops_test.fast_forward():
+            await ops_test.model.wait_for_idle(status="active", timeout=1000)
+
+        # Connect to the database using the read/write endpoint.
+    with psycopg2.connect(connection_string) as connection, connection.cursor() as cursor:
+        # Check that it's possible to write and read data from the database that
+        # was created for the application.
+        connection.autocommit = True
+        cursor.execute("SELECT data FROM test;")
+        data = cursor.fetchone()
+        assert data[0] == "some data"
 
 
 @pytest.mark.group(1)
