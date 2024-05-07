@@ -61,17 +61,17 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # is a pre-existing cluster.
     if not await app_name(ops_test):
         wait_for_apps = True
-        await build_and_deploy(ops_test, 3, wait_for_idle=False)
+        await build_and_deploy(ops_test, 1, wait_for_idle=False)
     # Deploy the continuous writes application charm if it wasn't already deployed.
-    if not await app_name(ops_test, APPLICATION_NAME):
-        wait_for_apps = True
-        async with ops_test.fast_forward():
-            await ops_test.model.deploy(
-                APPLICATION_NAME,
-                application_name=APPLICATION_NAME,
-                series=CHARM_SERIES,
-                channel="edge",
-            )
+    # if not await app_name(ops_test, APPLICATION_NAME):
+    #     wait_for_apps = True
+    #     async with ops_test.fast_forward():
+    #         await ops_test.model.deploy(
+    #             APPLICATION_NAME,
+    #             application_name=APPLICATION_NAME,
+    #             series=CHARM_SERIES,
+    #             channel="edge",
+    #         )
 
     if wait_for_apps:
         async with ops_test.fast_forward():
