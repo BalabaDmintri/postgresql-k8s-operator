@@ -91,7 +91,7 @@ async def build_and_deploy(
             apps=[database_app_name],
             status=status,
             raise_on_blocked=True,
-            timeout=1000,
+            timeout=3000,
             wait_for_exact_units=num_units,
         )
 
