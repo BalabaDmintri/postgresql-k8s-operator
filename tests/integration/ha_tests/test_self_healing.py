@@ -81,7 +81,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             await ops_test.model.wait_for_idle(status="active", timeout=1000)
 
     connection_string = await build_connection_string(
-        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
+        ops_test, APPLICATION_APP_NAME, "database"
     )
 
     # Connect to the database using the read/write endpoint.
