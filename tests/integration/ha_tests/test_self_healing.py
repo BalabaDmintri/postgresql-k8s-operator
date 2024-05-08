@@ -81,18 +81,17 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             await ops_test.model.wait_for_idle(status="active", timeout=3000)
     await start_continuous_writes(ops_test, DATABASE_APP_NAME)
 
-    await ops_test.model.wait_for_idle(status="active", timeout=1000)
     app = await app_name(ops_test)
     password = await get_password(ops_test, database_app_name=app)
-    status = await ops_test.model.get_status()
-    host = status["applications"][APP_NAME]["units"][f"{APP_NAME}/0"]["address"]
+    host = ops_test.model.applications[APP_NAME].units[f"{APP_NAME}/0"]["address"]
     connection_string = (
         f"dbname='{APPLICATION_NAME.replace('-', '_')}_first_database' user='operator'"
         f" host='{host}' password='{password}' connect_timeout=10"
     )
 
+    await ops_test.model.wait_for_idle(status="active", timeout=1000)
+
     logger.info(f"-------------- {connection_string}")
-    sleep(60*10)
     # Connect to the database using the read/write endpoint.
     with psycopg2.connect(connection_string) as connection, connection.cursor() as cursor:
         # Check that it's possible to write and read data from the database that
