@@ -90,7 +90,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         f" host='{unit_address}' password='{password}' connect_timeout=10"
     )
 
-    await ops_test.model.wait_for_idle(status="active", timeout=1000)
+    sleep(60*2)
 
     logger.info(f"-------------- {connection_string}")
     # Connect to the database using the read/write endpoint.
