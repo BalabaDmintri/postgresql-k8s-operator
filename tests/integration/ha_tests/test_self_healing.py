@@ -81,6 +81,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             await ops_test.model.wait_for_idle(status="active", timeout=3000)
     await start_continuous_writes(ops_test, DATABASE_APP_NAME)
 
+    await ops_test.model.wait_for_idle(status="active", timeout=1000)
     app = await app_name(ops_test)
     password = await get_password(ops_test, database_app_name=app)
     status = await ops_test.model.get_status()
