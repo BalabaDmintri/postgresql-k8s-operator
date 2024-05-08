@@ -80,6 +80,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         async with ops_test.fast_forward():
             await ops_test.model.wait_for_idle(status="active", timeout=3000)
     await start_continuous_writes(ops_test, DATABASE_APP_NAME)
+    sleep(60*3)
 
     app = await app_name(ops_test)
     password = await get_password(ops_test, database_app_name=app)
@@ -89,8 +90,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         f"dbname='{APPLICATION_NAME.replace('-', '_')}_first_database' user='operator'"
         f" host='{unit_address}' password='{password}' connect_timeout=10"
     )
-
-    sleep(60*2)
 
     logger.info(f"-------------- {connection_string}")
     # Connect to the database using the read/write endpoint.
