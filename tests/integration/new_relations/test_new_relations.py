@@ -143,7 +143,7 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest, databas
 
     # Get the connection string to connect to the database using the read-only endpoint.
     connection_string = await build_connection_string(
-        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, read_only_endpoint=True
+        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
     )
 
     # Connect to the database using the read-only endpoint.
