@@ -83,10 +83,11 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
     app = await app_name(ops_test)
     password = await get_password(ops_test, database_app_name=app)
-    host = ops_test.model.applications[APP_NAME].units[0]["address"]
+    unit = ops_test.model.applications[APP_NAME].units[0]
+    unit_address = await get_unit_address(ops_test, unit.name)
     connection_string = (
         f"dbname='{APPLICATION_NAME.replace('-', '_')}_first_database' user='operator'"
-        f" host='{host}' password='{password}' connect_timeout=10"
+        f" host='{unit_address}' password='{password}' connect_timeout=10"
     )
 
     await ops_test.model.wait_for_idle(status="active", timeout=1000)
