@@ -76,10 +76,6 @@ async def build_connection_string(
         relation_id,
         relation_alias,
     )
-    logger.info(f" ---------------- username ={username}")
-    logger.info(f" ---------------- password ={password}")
-    logger.info(f" ---------------- database ={database}")
-    logger.info(f" ---------------- endpoints ={endpoints}")
     host = endpoints.split(",")[0].split(":")[0]
 
     # Translate the service hostname to an IP address.
