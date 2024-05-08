@@ -104,6 +104,8 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         data = cursor.fetchone()
         assert data[0] == "some data"
 
+
+    sleep(60*10)
     await ops_test.model.remove_application(DATABASE_APP_NAME, block_until_done=True)
 
     wait_for_apps = True
