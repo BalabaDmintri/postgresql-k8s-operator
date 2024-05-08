@@ -81,7 +81,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             await ops_test.model.wait_for_idle(status="active", timeout=3000)
     await start_continuous_writes(ops_test, DATABASE_APP_NAME)
     connection_string = await build_connection_string(
-        ops_test, APPLICATION_APP_NAME, "database", read_only_endpoint=True
+        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, read_only_endpoint=True
     )
     logger.info(f"------------ sleep")
     sleep(60*10)
