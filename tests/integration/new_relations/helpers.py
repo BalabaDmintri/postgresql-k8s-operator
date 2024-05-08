@@ -2,6 +2,7 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 import json
+import logging
 from typing import Dict, Optional
 
 import yaml
@@ -10,7 +11,7 @@ from lightkube.resources.core_v1 import Service
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
 
-
+logger = logging.getLogger(__name__)
 async def get_juju_secret(ops_test: OpsTest, secret_uri: str) -> Dict[str, str]:
     """Retrieve juju secret."""
     secret_unique_id = secret_uri.split("/")[-1]
@@ -75,6 +76,10 @@ async def build_connection_string(
         relation_id,
         relation_alias,
     )
+    logger.info(f" ---------------- username ={username}")
+    logger.info(f" ---------------- password ={password}")
+    logger.info(f" ---------------- database ={database}")
+    logger.info(f" ---------------- endpoints ={endpoints}")
     host = endpoints.split(",")[0].split(":")[0]
 
     # Translate the service hostname to an IP address.
