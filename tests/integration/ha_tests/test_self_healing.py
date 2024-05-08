@@ -91,6 +91,8 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         f" host='{host}' password='{password}' connect_timeout=10"
     )
 
+    logger.info(f"-------------- {connection_string}")
+    sleep(60*10)
     # Connect to the database using the read/write endpoint.
     with psycopg2.connect(connection_string) as connection, connection.cursor() as cursor:
         # Check that it's possible to write and read data from the database that
