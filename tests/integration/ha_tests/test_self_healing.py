@@ -106,13 +106,13 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
     await ops_test.model.remove_application(DATABASE_APP_NAME, block_until_done=True)
 
-    wait_for_apps = False
+    wait_for_apps = True
     await build_and_deploy(ops_test, 1, wait_for_idle=False)
     if wait_for_apps:
         async with ops_test.fast_forward():
             await ops_test.model.wait_for_idle(status="active", timeout=1000)
 
-        # Connect to the database using the read/write endpoint.
+    logger.info(f"-------------- {connection_string}")
     with psycopg2.connect(connection_string) as connection, connection.cursor() as cursor:
         # Check that it's possible to write and read data from the database that
         # was created for the application.
