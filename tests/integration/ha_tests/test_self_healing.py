@@ -83,7 +83,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     logger.info(f"------------ sleep")
     sleep(60*10)
     connection_string = await build_connection_string(
-        ops_test, APPLICATION_APP_NAME, "database", read_only_endpoint=True
+        ops_test, DATABASE_APP_NAME, "database", read_only_endpoint=True
     )
 
     # Connect to the database using the read/write endpoint.
