@@ -80,11 +80,11 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         async with ops_test.fast_forward():
             await ops_test.model.wait_for_idle(status="active", timeout=3000)
     await start_continuous_writes(ops_test, DATABASE_APP_NAME)
-    logger.info(f"------------ sleep")
-    sleep(60*10)
     connection_string = await build_connection_string(
         ops_test, DATABASE_APP_NAME, "database", read_only_endpoint=True
     )
+    logger.info(f"------------ sleep")
+    sleep(60*10)
 
     # Connect to the database using the read/write endpoint.
     with psycopg2.connect(connection_string) as connection, connection.cursor() as cursor:
