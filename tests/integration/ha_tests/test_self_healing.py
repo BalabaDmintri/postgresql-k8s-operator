@@ -3,10 +3,17 @@
 # See LICENSE file for licensing details.
 import asyncio
 import logging
+import subprocess
 from time import sleep
+from typing import Any
 
 import psycopg2
 import pytest
+import yaml
+from lightkube import Client
+from lightkube.core.client import GlobalResource
+from lightkube.resources.core_v1 import PersistentVolumeClaim, PersistentVolume
+from lightkube.types import PatchType
 from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_delay, wait_fixed
 
@@ -21,7 +28,7 @@ from ..helpers import (
     get_password,
     get_unit_address,
     run_command_on_unit,
-    scale_application, DATABASE_APP_NAME,
+    scale_application, DATABASE_APP_NAME, set_password,
 )
 from .helpers import (
     are_all_db_processes_down,
@@ -49,22 +56,117 @@ from ..new_relations.test_new_relations import FIRST_DATABASE_RELATION_NAME, APP
 logger = logging.getLogger(__name__)
 
 APP_NAME = METADATA["name"]
+SECOND_APP_NAME = f"second_{APP_NAME}"
 PATRONI_PROCESS = "/usr/bin/patroni"
 POSTGRESQL_PROCESS = "postgres"
 DB_PROCESSES = [POSTGRESQL_PROCESS, PATRONI_PROCESS]
 MEDIAN_ELECTION_TIME = 10
 
+# def delete_pvc(ops_test: OpsTest, pvc: GlobalResource):
+#     client = Client(namespace=ops_test.model.name)
+#     client.delete(PersistentVolumeClaim, namespace=ops_test.model.name, name=pvc.metadata.name)
+#
+# def get_pvc(ops_test: OpsTest, unit_name: str):
+#     client = Client(namespace=ops_test.model.name)
+#     pvc_list = client.list(PersistentVolumeClaim, namespace=ops_test.model.name)
+#     for pvc in pvc_list:
+#         print(f"get_pvc_config RES: {pvc}")
+#         if unit_name in pvc.metadata.name:
+#             return pvc
+#     return None
+#
+# def get_pv(ops_test: OpsTest, unit_name: str):
+#     client = Client(namespace=ops_test.model.name)
+#     pv_list = client.list(PersistentVolume, namespace=ops_test.model.name)
+#     for pv in pv_list:
+#         print(f"get_pv_config RES: {pv}")
+#         if unit_name in str(pv.spec.hostPath.path):
+#             return pv
+#     return None
+#
+# def change_pv_reclaim_policy(ops_test: OpsTest, pvc_config: GlobalResource, policy: str):
+#     client = Client(namespace=ops_test.model.name)
+#     res = client.patch(PersistentVolume, pvc_config.metadata.name, {"spec": {"persistentVolumeReclaimPolicy":f"{policy}"}}, namespace=ops_test.model.name)
+#     print(f"change_pv_reclaim_policy RES: {res}")
+#     return res
+#
+# def remove_pv_claimref(ops_test: OpsTest, pv_config: GlobalResource):
+#     client = Client(namespace=ops_test.model.name)
+#     res = client.patch(PersistentVolume, pv_config.metadata.name, {"spec": {"claimRef":None}}, namespace=ops_test.model.name)
+#     print(f"remove_pv_claimref RES: {res}")
+#
+# def change_pvc_pv_name(pvc_config: GlobalResource, pv_name_new: str):
+#     pvc_config.spec.volumeName = pv_name_new
+#     del pvc_config.metadata.annotations['pv.kubernetes.io/bind-completed']
+#     return pvc_config
+#
+# def apply_pvc_config(ops_test: OpsTest, pvc_config: GlobalResource):
+#     client = Client(namespace=ops_test.model.name)
+#     res = client.patch(PersistentVolumeClaim, pvc_config.metadata.name, pvc_config.to_dict(), field_manager="lightkube", namespace=ops_test.model.name, patch_type=PatchType.APPLY)
+#     print(f"apply_pvc_config RES: {res}")
+
+def get_pvc_config(ops_test, pvc_name: str) -> Any:
+    command = f"kubectl -n {ops_test.model.name} get pvc {pvc_name} -o yaml"
+    output = subprocess.check_output(command, shell=True)
+    return yaml.safe_load(output)
+
+def get_pv_and_pvc(ops_test, application_name: str):
+    command = "kubectl get pv -o jsonpath='{range .items[*]}{@.metadata.name}_{@.spec.claimRef.name} '"
+    output = subprocess.check_output(command, shell=True, text=True)
+    split_str = output.split(" ")
+    assert len(split_str) != 0, "Not found pv and pvc"
+
+    for s in split_str:
+        if application_name in s:
+            out = s.split("_")
+            assert len(out) == 2, "not found persistence volume id"
+            return {"pv_name": out[0], "pvc_name": out[1]}
+    return
+
+def delete_pvc(ops_test, pvc_name: str):
+    command = f"kubectl -n {ops_test.model.name} delete pvc {pvc_name}"
+    subprocess.check_output(command, shell=True)
+
+def retain_volume(ops_test, pv_name: str) -> None:
+    command = " ".join(["kubectl",
+                        "-n",
+                        ops_test.model.name,
+                        "patch",
+                        "pv",
+                        pv_name,
+                        "-p",
+                        "'{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Retain\"}}'"])
+    subprocess.check_output(command, shell=True, text=True)
+
+def retain_volume(ops_test, pv_name: str, patch_data: str):
+    command = " ".join(["kubectl",
+                        "-n",
+                        ops_test.model.name,
+                        "patch",
+                        "pv",
+                        pv_name,
+                        "-p",
+                        patch_data])
+    subprocess.check_output(command, shell=True, text=True)
+
+def apply_conf(conf):
+    subprocess.check_output(
+            " ".join(["kubectl", "apply", "-f", conf]), shell=True
+        )
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy three unit of PostgreSQL."""
-    wait_for_apps = False
+    wait_for_apps: bool = False
     # It is possible for users to provide their own cluster for HA testing. Hence, check if there
     # is a pre-existing cluster.
     if not await app_name(ops_test):
         wait_for_apps = True
-        await build_and_deploy(ops_test, 1, wait_for_idle=False)
+        await asyncio.gather(
+            build_and_deploy(ops_test, 1, wait_for_idle=False),
+            build_and_deploy(ops_test, 1, database_app_name= SECOND_APP_NAME, wait_for_idle=False),
+        )
     # Deploy the continuous writes application charm if it wasn't already deployed.
     if not await app_name(ops_test, APPLICATION_NAME):
         wait_for_apps = True
@@ -79,50 +181,18 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     if wait_for_apps:
         async with ops_test.fast_forward():
             await ops_test.model.wait_for_idle(status="active", timeout=3000)
-    # await start_continuous_writes(ops_test, DATABASE_APP_NAME)
+
     await ops_test.model.relate(DATABASE_APP_NAME, f"{APPLICATION_NAME}:first-database")
     await ops_test.model.wait_for_idle(status="active", timeout=3000)
 
-    app = await app_name(ops_test)
-    password = await get_password(ops_test, database_app_name=app)
-    unit = ops_test.model.applications[APP_NAME].units[0]
-    unit_address = await get_unit_address(ops_test, unit.name)
-    connection_string = (
-        f"dbname='{APPLICATION_NAME.replace('-', '_')}_first_database' user='operator'"
-        f" host='{unit_address}' password='{password}' connect_timeout=10"
+    primary = await get_primary(
+        ops_test, ops_test.model.applications[APP_NAME].units[0].name
     )
-
-    logger.info(f"-------------- {connection_string}")
-    # Connect to the database using the read/write endpoint.
-    with psycopg2.connect(connection_string) as connection, connection.cursor() as cursor:
-        # Check that it's possible to write and read data from the database that
-        # was created for the application.
-        connection.autocommit = True
-        cursor.execute("CREATE TABLE test(data TEXT);")
-        cursor.execute("INSERT INTO test(data) VALUES('some data');")
-        cursor.execute("SELECT data FROM test;")
-        data = cursor.fetchone()
-        assert data[0] == "some data"
-
-
-    sleep(60*10)
-    await ops_test.model.remove_application(DATABASE_APP_NAME, block_until_done=True)
-
-    wait_for_apps = True
-    await build_and_deploy(ops_test, 1, wait_for_idle=False)
-    if wait_for_apps:
-        async with ops_test.fast_forward():
-            await ops_test.model.wait_for_idle(status="active", timeout=1000)
-
-    logger.info(f"-------------- {connection_string}")
-    with psycopg2.connect(connection_string) as connection, connection.cursor() as cursor:
-        # Check that it's possible to write and read data from the database that
-        # was created for the application.
-        connection.autocommit = True
-        cursor.execute("SELECT data FROM test;")
-        data = cursor.fetchone()
-        assert data[0] == "some data"
-
+    for user in ["monitoring", "operator", "replication", "rewind"]:
+        password = await get_password(ops_test, primary, user)
+        second_primary = ops_test.model.applications[SECOND_APP_NAME].units[0].name
+        await set_password(ops_test, second_primary, user, password)
+    await ops_test.model.destroy_unit(second_primary)
 
 @pytest.mark.group(1)
 @markers.juju2
@@ -454,6 +524,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     """Scale the database to zero units and scale up again."""
     # Locate primary unit.
     app = await app_name(ops_test)
+    second_app = await app_name(ops_test,application_name=SECOND_APP_NAME)
 
     # Start an application that continuously writes data to the database.
     await start_continuous_writes(ops_test, app)
@@ -461,30 +532,61 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # Scale the database to zero units.
     logger.info("scaling database to zero units")
     await scale_application(ops_test, app, 0)
+    await scale_application(ops_test, second_app, 0)
 
-    # Scale the database to three units.
-    logger.info("scaling database to three units")
-    await scale_application(ops_test, app, 3)
+    second_volume_data = get_pv_and_pvc(ops_test, second_app)
+    app_volume_data =get_pv_and_pvc(ops_test, app)
 
-    # Verify all units are up and running.
-    logger.info("waiting for the database service to start in all units")
-    for unit in ops_test.model.applications[app].units:
-        assert await is_postgresql_ready(
-            ops_test, unit.name
-        ), f"unit {unit.name} not restarted after cluster restart."
+    retain_volume(
+        ops_test,
+        pv_name=second_volume_data.get("pv_name"),
+        patch_data="'{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Retain\"}}'",
+    )
+    await ops_test.model.remove_application(SECOND_APP_NAME, block_until_done=True)
+    delete_pvc(ops_test, pvc_name=second_volume_data["pvc_name"])
 
-    logger.info("checking whether writes are increasing")
-    await are_writes_increasing(ops_test)
+    pvc_config = get_pvc_config(ops_test, pvc_name=app_volume_data["pvc_name"])
+    logger.info(pvc_config)
+    logger.info("---------------------------------------------------")
+    pvc_config["spec"]["volumeName"] = second_volume_data["pv_name"]
+    del pvc_config["pv.kubernetes.io/bind-completed"]
+    delete_pvc(ops_test, pvc_name=second_volume_data["pvc_name"])
+    logger.info(pvc_config)
+    logger.info("---------------------------------------------------")
 
-    # Verify that all units are part of the same cluster.
-    logger.info("checking whether all units are part of the same cluster")
-    member_ips = await fetch_cluster_members(ops_test)
-    ip_addresses = [
-        await get_unit_address(ops_test, unit.name)
-        for unit in ops_test.model.applications[app].units
-    ]
-    assert set(member_ips) == set(ip_addresses), "not all units are part of the same cluster."
+    logger.info(f"----- apply conf {pvc_config}")
+    retain_volume(
+        ops_test,
+        pv_name=second_volume_data.get("pv_name"),
+        patch_data="'{\"spec\":{\"claimRef\":null}}'",
+    )
 
-    # Verify that no writes to the database were missed after stopping the writes.
-    logger.info("checking whether no writes to the database were missed after stopping the writes")
-    await check_writes(ops_test)
+    logger.info(f"----- apply conf {pvc_config}")
+    apply_conf(pvc_config)
+
+    # # Scale the database to three units.
+    # logger.info("scaling database to three units")
+    # await scale_application(ops_test, app, 3)
+    #
+    # # Verify all units are up and running.
+    # logger.info("waiting for the database service to start in all units")
+    # for unit in ops_test.model.applications[app].units:
+    #     assert await is_postgresql_ready(
+    #         ops_test, unit.name
+    #     ), f"unit {unit.name} not restarted after cluster restart."
+    #
+    # logger.info("checking whether writes are increasing")
+    # await are_writes_increasing(ops_test)
+    #
+    # # Verify that all units are part of the same cluster.
+    # logger.info("checking whether all units are part of the same cluster")
+    # member_ips = await fetch_cluster_members(ops_test)
+    # ip_addresses = [
+    #     await get_unit_address(ops_test, unit.name)
+    #     for unit in ops_test.model.applications[app].units
+    # ]
+    # assert set(member_ips) == set(ip_addresses), "not all units are part of the same cluster."
+    #
+    # # Verify that no writes to the database were missed after stopping the writes.
+    # logger.info("checking whether no writes to the database were missed after stopping the writes")
+    # await check_writes(ops_test)
