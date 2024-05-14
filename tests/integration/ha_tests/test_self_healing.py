@@ -71,7 +71,6 @@ def get_pvc(ops_test: OpsTest, unit_name: str):
     client = Client(namespace=ops_test.model.name)
     pvc_list = client.list(PersistentVolumeClaim, namespace=ops_test.model.name)
     for pvc in pvc_list:
-        print(f"get_pvc_config RES: {pvc}")
         if unit_name in pvc.metadata.name:
             return pvc
     return None
@@ -80,7 +79,6 @@ def get_pv(ops_test: OpsTest, unit_name: str):
     client = Client(namespace=ops_test.model.name)
     pv_list = client.list(PersistentVolume, namespace=ops_test.model.name)
     for pv in pv_list:
-        print(f"get_pv_config RES: {pv}")
         if unit_name in str(pv.spec.hostPath.path):
             return pv
     return None
@@ -614,7 +612,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     }
 
     logger.info("-- change_pv_reclaim_policy")
-    second_volume_data["pv_name"] = change_pv_reclaim_policy(ops_test, pvc_config=second_volume_data["pv_name"], policy="Retain")
+    second_volume_data["pv_name"] = change_pv_reclaim_policy(ops_test, pvc_config=second_volume_data["pvc_name"], policy="Retain")
     logger.info("-- remove_application")
     await ops_test.model.remove_application(SECOND_APP_NAME, block_until_done=True)
     logger.info("-- delete_pvc - second_volume_data")
