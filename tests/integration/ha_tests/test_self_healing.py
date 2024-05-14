@@ -599,9 +599,8 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await scale_application(ops_test, SECOND_APP_NAME, 0)
 
     logger.info("-- second_volume_data")
-    second_pv = get_pv(ops_test, f"{SECOND_APP_NAME}-0")
     second_volume_data = {
-        "pv_name": second_pv,
+        "pv_name": get_pv(ops_test, f"{SECOND_APP_NAME}-0"),
         "pvc_name": get_pvc(ops_test, f"{SECOND_APP_NAME}-0")
     }
 
@@ -611,9 +610,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
         "pvc_name": get_pvc(ops_test, f"{app}-0")
     }
 
-    v = second_volume_data["pv_name"]
-    logger.info(f"-- change_pv_reclaim_policy {v}")
-    logger.info(f"-- change_pv_reclaim_policy {second_pv}")
+    logger.info(f"-- change_pv_reclaim_policy -----")
     second_volume_data["pv_name"] = change_pv_reclaim_policy(ops_test, pv_config=second_volume_data["pv_name"], policy="Retain")
     logger.info("-- remove_application")
     await ops_test.model.remove_application(SECOND_APP_NAME, block_until_done=True)
@@ -623,7 +620,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     logger.info("-- change_pvc_pv_name - ")
     pvc_config = change_pvc_pv_name(app_volume_data["pvc_name"], second_volume_data["pv_name"].metadata.name)
     logger.info("-- remove_pv_claimref - second_volume_data")
-    remove_pv_claimref(ops_test, pv_config=pvc_config)
+    remove_pv_claimref(ops_test, pv_config=second_volume_data["pv_name"])
     logger.info("-- apply_pvc_config")
     apply_pvc_config(ops_test, pvc_config=pvc_config)
     # second_volume_data = get_pv_and_pvc(ops_test, second_app)
