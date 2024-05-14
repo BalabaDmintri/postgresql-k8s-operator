@@ -517,11 +517,80 @@ async def test_network_cut(
 
 
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_k8s_helpers(ops_test: OpsTest):
+    async with ops_test.fast_forward():
+        await ops_test.model.deploy(
+            DATABASE_APP_NAME,
+            application_name=DATABASE_APP_NAME,
+            num_units=1,
+            channel="14/stable",
+            series=CHARM_SERIES,
+        )
+
+        await ops_test.model.wait_for_idle(status="active", timeout=1000)
+
+        assert ops_test.model.applications[DATABASE_APP_NAME].units[0].workload_status == "active"
+
+        primary_name = ops_test.model.applications[DATABASE_APP_NAME].units[0].name
+
+        primary_pvc = get_pvc(ops_test, primary_name.replace("/", "-"))
+
+        assert primary_pvc
+
+        primary_pv = get_pv(ops_test, primary_name.replace("/", "-"))
+
+        assert primary_pv
+
+        # Remove application witout storage removal
+        logger.info("scale to 0")
+        await scale_application(ops_test, DATABASE_APP_NAME, 0)
+
+        primary_pv = change_pv_reclaim_policy(ops_test, primary_pv, "Retain")
+
+        await ops_test.model.remove_application(DATABASE_APP_NAME, block_until_done=True)
+
+        delete_pvc(ops_test, primary_pvc)
+
+        await ops_test.model.deploy(
+            DATABASE_APP_NAME,
+            application_name=DUP_DATABASE_APP_NAME,
+            num_units=1,
+            channel="14/stable",
+            series=CHARM_SERIES,
+        )
+
+        await ops_test.model.wait_for_idle(status="active", timeout=1000)
+
+        assert ops_test.model.applications[DUP_DATABASE_APP_NAME].units[0].workload_status == "active"
+
+        dup_primary_name = ops_test.model.applications[DUP_DATABASE_APP_NAME].units[0].name
+
+        dup_primary_pvc = get_pvc(ops_test, dup_primary_name.replace("/", "-"))
+
+        assert primary_pvc
+
+        # Remove application witout storage removal
+        logger.info("scale to 0")
+        await scale_application(ops_test, DUP_DATABASE_APP_NAME, 0)
+
+        dup_primary_pvc = change_pvc_pv_name(dup_primary_pvc, primary_pv.metadata.name)
+
+        delete_pvc(ops_test, dup_primary_pvc)
+
+        remove_pv_claimref(ops_test, primary_pv)
+
+        apply_pvc_config(ops_test, dup_primary_pvc)
+
+        logger.info("scale to 1")
+        await ops_test.model.applications[DUP_DATABASE_APP_NAME].scale(1)
+
+@pytest.mark.group(1)
 async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     """Scale the database to zero units and scale up again."""
     # Locate primary unit.
     app = await app_name(ops_test)
-    second_app = await app_name(ops_test,application_name=SECOND_APP_NAME)
+    second_app = await app_name(ops_test, application_name=SECOND_APP_NAME)
 
     # # Start an application that continuously writes data to the database.
     await start_continuous_writes(ops_test, app)
@@ -532,22 +601,30 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     logger.info(f"scaling database to zero units -- {second_app}")
     await scale_application(ops_test, SECOND_APP_NAME, 0)
 
+    logger.info("-- second_volume_data")
     second_volume_data = {
-        "pv_name": get_pv(ops_test, f"{second_app}/0"),
-        "pvc_name": get_pvc(ops_test, f"{second_app}/0")
+        "pv_name": get_pv(ops_test, f"{second_app}-0"),
+        "pvc_name": get_pvc(ops_test, f"{second_app}-0")
     }
 
+    logger.info("-- app_volume_data")
     app_volume_data = {
-        "pv_name": get_pv(ops_test, f"{app}/0"),
-        "pvc_name": get_pvc(ops_test, f"{app}/0")
+        "pv_name": get_pv(ops_test, f"{app}-0"),
+        "pvc_name": get_pvc(ops_test, f"{app}-0")
     }
 
-    change_pv_reclaim_policy(ops_test, pvc_config=second_volume_data["pvc_name"], policy="Retain")
+    logger.info("-- change_pv_reclaim_policy")
+    second_volume_data["pv_name"] = change_pv_reclaim_policy(ops_test, pvc_config=second_volume_data["pv_name"], policy="Retain")
+    logger.info("-- remove_application")
     await ops_test.model.remove_application(SECOND_APP_NAME, block_until_done=True)
+    logger.info("-- delete_pvc - second_volume_data")
     delete_pvc(ops_test, pvc=second_volume_data["pvc_name"])
 
-    pvc_config = change_pvc_pv_name(app_volume_data["pvc_name"], second_volume_data["pvc_name"].metadata.name)
+    logger.info("-- change_pvc_pv_name - ")
+    pvc_config = change_pvc_pv_name(app_volume_data["pvc_name"], second_volume_data["pv_name"].metadata.name)
+    logger.info("-- remove_pv_claimref - second_volume_data")
     remove_pv_claimref(ops_test, pv_config=pvc_config)
+    logger.info("-- apply_pvc_config")
     apply_pvc_config(ops_test,pvc_config=pvc_config)
     # second_volume_data = get_pv_and_pvc(ops_test, second_app)
     # app_volume_data =get_pv_and_pvc(ops_test, app)
