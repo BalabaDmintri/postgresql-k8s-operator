@@ -620,6 +620,8 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     delete_pvc(ops_test, pvc=app_volume_data["pvc_name"])
     logger.info(f" ---------------------------")
     apply_pvc_config(ops_test, pvc_config=pvc_config)
+    logger.info(f" ------------scale-appp----------")
+    await scale_application(ops_test, app, 1)
     # second_volume_data = get_pv_and_pvc(ops_test, second_app)
     # app_volume_data =get_pv_and_pvc(ops_test, app)
     #
