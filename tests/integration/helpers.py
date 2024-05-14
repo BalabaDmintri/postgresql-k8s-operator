@@ -674,7 +674,7 @@ async def scale_application(ops_test: OpsTest, application_name: str, scale: int
     await ops_test.model.applications[application_name].scale(scale)
     if scale == 0:
         await ops_test.model.block_until(
-            lambda: len(ops_test.model.applications[DATABASE_APP_NAME].units) == scale,
+            lambda: len(ops_test.model.applications[application_name].units) == scale,
             timeout=1000,
         )
     else:
