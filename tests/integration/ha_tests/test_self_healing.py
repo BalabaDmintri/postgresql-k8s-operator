@@ -186,9 +186,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.relate(DATABASE_APP_NAME, f"{APPLICATION_NAME}:first-database")
     await ops_test.model.wait_for_idle(status="active", timeout=3000)
 
-    primary = await get_primary(
-        ops_test, ops_test.model.applications[APP_NAME].units[0].name
-    )
+    primary = await get_primary(ops_test, database_app_name=APP_NAME)
     for user in ["monitoring", "operator", "replication", "rewind"]:
         password = await get_password(ops_test, primary, user)
         second_primary = ops_test.model.applications[SECOND_APP_NAME].units[0].name
@@ -528,7 +526,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     second_app = await app_name(ops_test,application_name=SECOND_APP_NAME)
 
     # # Start an application that continuously writes data to the database.
-    # await start_continuous_writes(ops_test, app)
+    await start_continuous_writes(ops_test, app)
 
     # Scale the database to zero units.
     logger.info("scaling database to zero units")
