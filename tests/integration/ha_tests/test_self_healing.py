@@ -190,7 +190,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         password = await get_password(ops_test, username=user, database_app_name=APP_NAME)
         second_primary = ops_test.model.applications[SECOND_APP_NAME].units[0].name
         await set_password(ops_test, second_primary, user, password)
-    await ops_test.model.destroy_unit(second_primary)
 
 @pytest.mark.group(1)
 @markers.juju2
