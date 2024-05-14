@@ -62,97 +62,100 @@ POSTGRESQL_PROCESS = "postgres"
 DB_PROCESSES = [POSTGRESQL_PROCESS, PATRONI_PROCESS]
 MEDIAN_ELECTION_TIME = 10
 
-# def delete_pvc(ops_test: OpsTest, pvc: GlobalResource):
-#     client = Client(namespace=ops_test.model.name)
-#     client.delete(PersistentVolumeClaim, namespace=ops_test.model.name, name=pvc.metadata.name)
+def delete_pvc(ops_test: OpsTest, pvc: GlobalResource):
+    client = Client(namespace=ops_test.model.name)
+    res = client.delete(PersistentVolumeClaim, namespace=ops_test.model.name, name=pvc.metadata.name)
+    print(f"delete_pvc RES: {res}")
+
+def get_pvc(ops_test: OpsTest, unit_name: str):
+    client = Client(namespace=ops_test.model.name)
+    pvc_list = client.list(PersistentVolumeClaim, namespace=ops_test.model.name)
+    for pvc in pvc_list:
+        print(f"get_pvc_config RES: {pvc}")
+        if unit_name in pvc.metadata.name:
+            return pvc
+    return None
+
+def get_pv(ops_test: OpsTest, unit_name: str):
+    client = Client(namespace=ops_test.model.name)
+    pv_list = client.list(PersistentVolume, namespace=ops_test.model.name)
+    for pv in pv_list:
+        print(f"get_pv_config RES: {pv}")
+        if unit_name in str(pv.spec.hostPath.path):
+            return pv
+    return None
+
+def change_pv_reclaim_policy(ops_test: OpsTest, pvc_config: GlobalResource, policy: str):
+    client = Client(namespace=ops_test.model.name)
+    res = client.patch(PersistentVolume, pvc_config.metadata.name, {"spec": {"persistentVolumeReclaimPolicy":f"{policy}"}}, namespace=ops_test.model.name)
+    print(f"change_pv_reclaim_policy RES: {res}")
+    return res
+
+def remove_pv_claimref(ops_test: OpsTest, pv_config: GlobalResource):
+    client = Client(namespace=ops_test.model.name)
+    res = client.patch(PersistentVolume, pv_config.metadata.name, {"spec": {"claimRef":None}}, namespace=ops_test.model.name)
+    print(f"remove_pv_claimref RES: {res}")
+
+def change_pvc_pv_name(pvc_config: GlobalResource, pv_name_new: str):
+    pvc_config.spec.volumeName = pv_name_new
+    del pvc_config.metadata.annotations['pv.kubernetes.io/bind-completed']
+    del pvc_config.metadata.uid
+    return pvc_config
+
+def apply_pvc_config(ops_test: OpsTest, pvc_config: GlobalResource):
+    client = Client(namespace=ops_test.model.name)
+    pvc_config.metadata.managedFields = None
+    res = client.apply(pvc_config, namespace=ops_test.model.name, field_manager="lightkube")
+    print(f"apply_pvc_config RES: {res}")
+
+# def get_pvc_config(ops_test, pvc_name: str) -> Any:
+#     command = f"kubectl -n {ops_test.model.name} get pvc {pvc_name} -o yaml"
+#     output = subprocess.check_output(command, shell=True)
+#     return yaml.safe_load(output)
 #
-# def get_pvc(ops_test: OpsTest, unit_name: str):
-#     client = Client(namespace=ops_test.model.name)
-#     pvc_list = client.list(PersistentVolumeClaim, namespace=ops_test.model.name)
-#     for pvc in pvc_list:
-#         print(f"get_pvc_config RES: {pvc}")
-#         if unit_name in pvc.metadata.name:
-#             return pvc
-#     return None
+# def get_pv_and_pvc(ops_test, application_name: str):
+#     command = "kubectl get pv -o jsonpath='{range .items[*]}{@.metadata.name}_{@.spec.claimRef.name} '"
+#     output = subprocess.check_output(command, shell=True, text=True)
+#     split_str = output.split(" ")
+#     assert len(split_str) != 0, "Not found pv and pvc"
 #
-# def get_pv(ops_test: OpsTest, unit_name: str):
-#     client = Client(namespace=ops_test.model.name)
-#     pv_list = client.list(PersistentVolume, namespace=ops_test.model.name)
-#     for pv in pv_list:
-#         print(f"get_pv_config RES: {pv}")
-#         if unit_name in str(pv.spec.hostPath.path):
-#             return pv
-#     return None
+#     for s in split_str:
+#         if application_name in s:
+#             out = s.split("_")
+#             assert len(out) == 2, "not found persistence volume id"
+#             return {"pv_name": out[0], "pvc_name": out[1]}
+#     return
 #
-# def change_pv_reclaim_policy(ops_test: OpsTest, pvc_config: GlobalResource, policy: str):
-#     client = Client(namespace=ops_test.model.name)
-#     res = client.patch(PersistentVolume, pvc_config.metadata.name, {"spec": {"persistentVolumeReclaimPolicy":f"{policy}"}}, namespace=ops_test.model.name)
-#     print(f"change_pv_reclaim_policy RES: {res}")
-#     return res
+# def delete_pvc(ops_test, pvc_name: str):
+#     command = f"kubectl -n {ops_test.model.name} delete pvc {pvc_name}"
+#     subprocess.check_output(command, shell=True)
 #
-# def remove_pv_claimref(ops_test: OpsTest, pv_config: GlobalResource):
-#     client = Client(namespace=ops_test.model.name)
-#     res = client.patch(PersistentVolume, pv_config.metadata.name, {"spec": {"claimRef":None}}, namespace=ops_test.model.name)
-#     print(f"remove_pv_claimref RES: {res}")
+# def retain_volume(ops_test, pv_name: str) -> None:
+#     command = " ".join(["kubectl",
+#                         "-n",
+#                         ops_test.model.name,
+#                         "patch",
+#                         "pv",
+#                         pv_name,
+#                         "-p",
+#                         "'{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Retain\"}}'"])
+#     subprocess.check_output(command, shell=True, text=True)
 #
-# def change_pvc_pv_name(pvc_config: GlobalResource, pv_name_new: str):
-#     pvc_config.spec.volumeName = pv_name_new
-#     del pvc_config.metadata.annotations['pv.kubernetes.io/bind-completed']
-#     return pvc_config
+# def retain_volume(ops_test, pv_name: str, patch_data: str):
+#     command = " ".join(["kubectl",
+#                         "-n",
+#                         ops_test.model.name,
+#                         "patch",
+#                         "pv",
+#                         pv_name,
+#                         "-p",
+#                         patch_data])
+#     subprocess.check_output(command, shell=True, text=True)
 #
-# def apply_pvc_config(ops_test: OpsTest, pvc_config: GlobalResource):
-#     client = Client(namespace=ops_test.model.name)
-#     res = client.patch(PersistentVolumeClaim, pvc_config.metadata.name, pvc_config.to_dict(), field_manager="lightkube", namespace=ops_test.model.name, patch_type=PatchType.APPLY)
-#     print(f"apply_pvc_config RES: {res}")
-
-def get_pvc_config(ops_test, pvc_name: str) -> Any:
-    command = f"kubectl -n {ops_test.model.name} get pvc {pvc_name} -o yaml"
-    output = subprocess.check_output(command, shell=True)
-    return yaml.safe_load(output)
-
-def get_pv_and_pvc(ops_test, application_name: str):
-    command = "kubectl get pv -o jsonpath='{range .items[*]}{@.metadata.name}_{@.spec.claimRef.name} '"
-    output = subprocess.check_output(command, shell=True, text=True)
-    split_str = output.split(" ")
-    assert len(split_str) != 0, "Not found pv and pvc"
-
-    for s in split_str:
-        if application_name in s:
-            out = s.split("_")
-            assert len(out) == 2, "not found persistence volume id"
-            return {"pv_name": out[0], "pvc_name": out[1]}
-    return
-
-def delete_pvc(ops_test, pvc_name: str):
-    command = f"kubectl -n {ops_test.model.name} delete pvc {pvc_name}"
-    subprocess.check_output(command, shell=True)
-
-def retain_volume(ops_test, pv_name: str) -> None:
-    command = " ".join(["kubectl",
-                        "-n",
-                        ops_test.model.name,
-                        "patch",
-                        "pv",
-                        pv_name,
-                        "-p",
-                        "'{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Retain\"}}'"])
-    subprocess.check_output(command, shell=True, text=True)
-
-def retain_volume(ops_test, pv_name: str, patch_data: str):
-    command = " ".join(["kubectl",
-                        "-n",
-                        ops_test.model.name,
-                        "patch",
-                        "pv",
-                        pv_name,
-                        "-p",
-                        patch_data])
-    subprocess.check_output(command, shell=True, text=True)
-
-def apply_conf(conf):
-    subprocess.check_output(
-            " ".join(["kubectl", "apply", "-f", conf]), shell=True
-        )
+# def apply_conf(conf):
+#     subprocess.check_output(
+#             " ".join(["kubectl", "apply", "-f", conf]), shell=True
+#         )
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
@@ -532,35 +535,52 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await scale_application(ops_test, app, 0)
     await scale_application(ops_test, second_app, 0)
 
-    second_volume_data = get_pv_and_pvc(ops_test, second_app)
-    app_volume_data =get_pv_and_pvc(ops_test, app)
+    second_volume_data = {
+        "pv_name": get_pv(ops_test, f"{second_app}/0"),
+        "pvc_name": get_pvc(ops_test, f"{second_app}/0")
+    }
 
-    retain_volume(
-        ops_test,
-        pv_name=second_volume_data.get("pv_name"),
-        patch_data="'{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Retain\"}}'",
-    )
+    app_volume_data = {
+        "pv_name": get_pv(ops_test, f"{app}/0"),
+        "pvc_name": get_pvc(ops_test, f"{app}/0")
+    }
+
+    change_pv_reclaim_policy(ops_test, pvc_config=second_volume_data["pvc_name"], policy="Retain")
     await ops_test.model.remove_application(SECOND_APP_NAME, block_until_done=True)
-    delete_pvc(ops_test, pvc_name=second_volume_data["pvc_name"])
+    delete_pvc(ops_test, pvc=second_volume_data["pvc_name"])
 
-    pvc_config = get_pvc_config(ops_test, pvc_name=app_volume_data["pvc_name"])
-    logger.info(pvc_config)
-    logger.info("---------------------------------------------------")
-    pvc_config["spec"]["volumeName"] = second_volume_data["pv_name"]
-    del pvc_config["pv.kubernetes.io/bind-completed"]
-    delete_pvc(ops_test, pvc_name=second_volume_data["pvc_name"])
-    logger.info(pvc_config)
-    logger.info("---------------------------------------------------")
-
-    logger.info(f"----- apply conf {pvc_config}")
-    retain_volume(
-        ops_test,
-        pv_name=second_volume_data.get("pv_name"),
-        patch_data="'{\"spec\":{\"claimRef\":null}}'",
-    )
-
-    logger.info(f"----- apply conf {pvc_config}")
-    apply_conf(pvc_config)
+    pvc_config = change_pvc_pv_name(app_volume_data["pvc_name"], second_volume_data["pvc_name"].metadata.name)
+    remove_pv_claimref(ops_test, pv_config=pvc_config)
+    apply_pvc_config(ops_test,pvc_config=pvc_config)
+    # second_volume_data = get_pv_and_pvc(ops_test, second_app)
+    # app_volume_data =get_pv_and_pvc(ops_test, app)
+    #
+    # retain_volume(
+    #     ops_test,
+    #     pv_name=second_volume_data.get("pv_name"),
+    #     patch_data="'{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Retain\"}}'",
+    # )
+    # await ops_test.model.remove_application(SECOND_APP_NAME, block_until_done=True)
+    # delete_pvc(ops_test, pvc_name=second_volume_data["pvc_name"])
+    #
+    # pvc_config = get_pvc_config(ops_test, pvc_name=app_volume_data["pvc_name"])
+    # logger.info(pvc_config)
+    # logger.info("---------------------------------------------------")
+    # pvc_config["spec"]["volumeName"] = second_volume_data["pv_name"]
+    # del pvc_config["pv.kubernetes.io/bind-completed"]
+    # delete_pvc(ops_test, pvc_name=second_volume_data["pvc_name"])
+    # logger.info(pvc_config)
+    # logger.info("---------------------------------------------------")
+    #
+    # logger.info(f"----- apply conf {pvc_config}")
+    # retain_volume(
+    #     ops_test,
+    #     pv_name=second_volume_data.get("pv_name"),
+    #     patch_data="'{\"spec\":{\"claimRef\":null}}'",
+    # )
+    #
+    # logger.info(f"----- apply conf {pvc_config}")
+    # apply_conf(pvc_config)
 
     # # Scale the database to three units.
     # logger.info("scaling database to three units")
