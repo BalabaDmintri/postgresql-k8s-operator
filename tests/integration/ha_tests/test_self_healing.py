@@ -612,7 +612,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     }
 
     logger.info("-- change_pv_reclaim_policy")
-    second_volume_data["pv_name"] = change_pv_reclaim_policy(ops_test, pvc_config=second_volume_data["pvc_name"], policy="Retain")
+    second_volume_data["pv_ame"] = change_pv_reclaim_policy(ops_test, pvc_config=second_volume_data["pv_name"], policy="Retain")
     logger.info("-- remove_application")
     await ops_test.model.remove_application(SECOND_APP_NAME, block_until_done=True)
     logger.info("-- delete_pvc - second_volume_data")
