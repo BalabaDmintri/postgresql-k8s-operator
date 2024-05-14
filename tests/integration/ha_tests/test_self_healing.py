@@ -530,7 +530,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     logger.info("scaling database to zero units")
     await scale_application(ops_test, app, 0)
     logger.info(f"scaling database to zero units -- {second_app}")
-    await scale_application(ops_test, second_app, 0)
+    await scale_application(ops_test, SECOND_APP_NAME, 0)
 
     second_volume_data = {
         "pv_name": get_pv(ops_test, f"{second_app}/0"),
