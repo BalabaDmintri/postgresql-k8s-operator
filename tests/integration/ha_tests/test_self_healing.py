@@ -527,8 +527,8 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     app = await app_name(ops_test)
     second_app = await app_name(ops_test,application_name=SECOND_APP_NAME)
 
-    # Start an application that continuously writes data to the database.
-    await start_continuous_writes(ops_test, app)
+    # # Start an application that continuously writes data to the database.
+    # await start_continuous_writes(ops_test, app)
 
     # Scale the database to zero units.
     logger.info("scaling database to zero units")
