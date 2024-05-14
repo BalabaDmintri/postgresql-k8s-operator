@@ -64,8 +64,7 @@ MEDIAN_ELECTION_TIME = 10
 
 def delete_pvc(ops_test: OpsTest, pvc: GlobalResource):
     client = Client(namespace=ops_test.model.name)
-    res = client.delete(PersistentVolumeClaim, namespace=ops_test.model.name, name=pvc.metadata.name)
-    print(f"delete_pvc RES: {res}")
+    client.delete(PersistentVolumeClaim, namespace=ops_test.model.name, name=pvc.metadata.name)
 
 def get_pvc(ops_test: OpsTest, unit_name: str):
     client = Client(namespace=ops_test.model.name)
@@ -594,7 +593,6 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # Scale the database to zero units.
     logger.info("scaling database to zero units")
     await scale_application(ops_test, app, 0)
-    logger.info(f"scaling database to zero units -- {SECOND_APP_NAME}")
     await scale_application(ops_test, SECOND_APP_NAME, 0)
 
     logger.info("-- second_volume_data")
@@ -618,9 +616,9 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
 
     logger.info("-- change_pvc_pv_name - ")
     pvc_config = change_pvc_pv_name(app_volume_data["pvc_name"], second_volume_data["pv_name"].metadata.name)
-    logger.info("-- remove_pv_claimref - second_volume_data")
     remove_pv_claimref(ops_test, pv_config=second_volume_data["pv_name"])
-    logger.info("-- apply_pvc_config")
+    delete_pvc(ops_test, pvc=app_volume_data["pvc_name"])
+    logger.info(f" ---------------------------")
     apply_pvc_config(ops_test, pvc_config=pvc_config)
     # second_volume_data = get_pv_and_pvc(ops_test, second_app)
     # app_volume_data =get_pv_and_pvc(ops_test, app)
