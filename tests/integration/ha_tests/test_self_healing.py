@@ -56,7 +56,7 @@ from ..new_relations.test_new_relations import FIRST_DATABASE_RELATION_NAME, APP
 logger = logging.getLogger(__name__)
 
 APP_NAME = METADATA["name"]
-SECOND_APP_NAME = f"second_{APP_NAME}"
+SECOND_APP_NAME = f"second-{APP_NAME}"
 PATRONI_PROCESS = "/usr/bin/patroni"
 POSTGRESQL_PROCESS = "postgres"
 DB_PROCESSES = [POSTGRESQL_PROCESS, PATRONI_PROCESS]
@@ -164,7 +164,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     if not await app_name(ops_test):
         wait_for_apps = True
         await build_and_deploy(ops_test, 1, wait_for_idle=False)
-        await build_and_deploy(ops_test, 1, database_app_name= SECOND_APP_NAME, wait_for_idle=False)
+        await build_and_deploy(ops_test, 1, database_app_name=SECOND_APP_NAME, wait_for_idle=False)
     # Deploy the continuous writes application charm if it wasn't already deployed.
     if not await app_name(ops_test, APPLICATION_NAME):
         wait_for_apps = True
