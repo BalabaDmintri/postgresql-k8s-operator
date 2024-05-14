@@ -91,8 +91,7 @@ def change_pv_reclaim_policy(ops_test: OpsTest, pv_config: GlobalResource, polic
 
 def remove_pv_claimref(ops_test: OpsTest, pv_config: GlobalResource):
     client = Client(namespace=ops_test.model.name)
-    res = client.patch(PersistentVolume, pv_config.metadata.name, {"spec": {"claimRef":None}}, namespace=ops_test.model.name)
-    print(f"remove_pv_claimref RES: {res}")
+    client.patch(PersistentVolume, pv_config.metadata.name, {"spec": {"claimRef":None}}, namespace=ops_test.model.name)
 
 def change_pvc_pv_name(pvc_config: GlobalResource, pv_name_new: str):
     pvc_config.spec.volumeName = pv_name_new
@@ -103,8 +102,8 @@ def change_pvc_pv_name(pvc_config: GlobalResource, pv_name_new: str):
 def apply_pvc_config(ops_test: OpsTest, pvc_config: GlobalResource):
     client = Client(namespace=ops_test.model.name)
     pvc_config.metadata.managedFields = None
-    res = client.apply(pvc_config, namespace=ops_test.model.name, field_manager="lightkube")
-    print(f"apply_pvc_config RES: {res}")
+    logger.info(f" ================  {pvc_config}")
+    client.apply(pvc_config, namespace=ops_test.model.name, field_manager="lightkube")
 
 # def get_pvc_config(ops_test, pvc_name: str) -> Any:
 #     command = f"kubectl -n {ops_test.model.name} get pvc {pvc_name} -o yaml"
