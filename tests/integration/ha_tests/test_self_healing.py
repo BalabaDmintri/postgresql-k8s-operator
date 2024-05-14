@@ -588,7 +588,6 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     """Scale the database to zero units and scale up again."""
     # Locate primary unit.
     app = await app_name(ops_test)
-    second_app = await app_name(ops_test, application_name=SECOND_APP_NAME)
 
     # # Start an application that continuously writes data to the database.
     await start_continuous_writes(ops_test, app)
@@ -596,14 +595,14 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # Scale the database to zero units.
     logger.info("scaling database to zero units")
     await scale_application(ops_test, app, 0)
-    logger.info(f"scaling database to zero units -- {second_app}")
+    logger.info(f"scaling database to zero units -- {SECOND_APP_NAME}")
     await scale_application(ops_test, SECOND_APP_NAME, 0)
 
     logger.info("-- second_volume_data")
-    second_pv = get_pv(ops_test, f"{second_app}-0")
+    second_pv = get_pv(ops_test, f"{SECOND_APP_NAME}-0")
     second_volume_data = {
         "pv_name": second_pv,
-        "pvc_name": get_pvc(ops_test, f"{second_app}-0")
+        "pvc_name": get_pvc(ops_test, f"{SECOND_APP_NAME}-0")
     }
 
     logger.info("-- app_volume_data")
