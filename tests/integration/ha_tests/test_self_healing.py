@@ -186,9 +186,8 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.relate(DATABASE_APP_NAME, f"{APPLICATION_NAME}:first-database")
     await ops_test.model.wait_for_idle(status="active", timeout=3000)
 
-    primary = await get_primary(ops_test, database_app_name=APP_NAME)
     for user in ["operator", "replication", "rewind"]:
-        password = await get_password(ops_test, primary, user)
+        password = await get_password(ops_test, username=user, database_app_name=APP_NAME)
         second_primary = ops_test.model.applications[SECOND_APP_NAME].units[0].name
         await set_password(ops_test, second_primary, user, password)
     await ops_test.model.destroy_unit(second_primary)
