@@ -187,7 +187,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(status="active", timeout=3000)
 
     primary = await get_primary(ops_test, database_app_name=APP_NAME)
-    for user in ["monitoring", "operator", "replication", "rewind"]:
+    for user in ["operator", "replication", "rewind"]:
         password = await get_password(ops_test, primary, user)
         second_primary = ops_test.model.applications[SECOND_APP_NAME].units[0].name
         await set_password(ops_test, second_primary, user, password)
