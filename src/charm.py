@@ -90,6 +90,7 @@ from utils import any_cpu_to_cores, any_memory_to_bytes, new_password
 logger = logging.getLogger(__name__)
 
 EXTENSIONS_DEPENDENCY_MESSAGE = "Unsatisfied plugin dependencies. Please check the logs"
+THIRD_PARTY_STORAGE_MESSAGE = "Failed to start postgresql. The storage belongs to a third-party cluster"
 DIFFERENT_VERSIONS_PSQL_BLOCKING_MESSAGE = "Please select the correct version of postgresql to use. You cannot use different versions of postgresql!"
 
 # http{x,core} clutter the logs with debug messages
@@ -419,11 +420,6 @@ class PostgresqlOperatorCharm(TypedCharmBase[CharmConfig]):
             return
         try:
             self.update_config()
-            if self._patroni.cluster_system_id_mismatch(unit_name=self.unit.name):
-                self.unit.status = BlockedStatus(
-                    "Failed to start postgresql. The storage belongs to a third-party cluster"
-                )
-                return
         except ValueError as e:
             self.unit.status = BlockedStatus("Configuration Error. Please check the logs")
             logger.error("Invalid configuration: %s", str(e))
@@ -787,7 +783,10 @@ class PostgresqlOperatorCharm(TypedCharmBase[CharmConfig]):
         if not self._patroni.member_started:
             logger.info("------------------------------- 9 ----------------------------------")
             logger.debug("Deferring on_postgresql_pebble_ready: Waiting for cluster to start")
-            self.unit.status = WaitingStatus("awaiting for cluster to start")
+            if self._patroni.cluster_system_id_mismatch(unit_name=self.unit.name):
+                self.unit.status = BlockedStatus(THIRD_PARTY_STORAGE_MESSAGE)
+            else:
+                self.unit.status = WaitingStatus("awaiting for cluster to start")
             event.defer()
             return
 
