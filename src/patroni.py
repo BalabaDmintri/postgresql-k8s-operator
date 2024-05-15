@@ -523,9 +523,6 @@ class Patroni:
         container = self._charm.unit.get_container("postgresql")
         ll = container.pull(PATRONI_LOG, encoding="utf-8")
         logger.info(f" --------------  pull  = {ll}")
-        if len(ll) == 0:
-            logger.info("-----------------------------------------------------------------2222-")
-            return ""
         latest_file = max(ll, key=os.path.getmtime)
         logger.info(f" --------------  max  = {latest_file}")
         logger.info("---------------------------------+++++++ 3 ++++++")
