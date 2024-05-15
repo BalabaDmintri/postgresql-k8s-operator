@@ -525,10 +525,8 @@ class Patroni:
         logger.info(f" --------------  pull  = {ll}")
         logger.info("---------------------------------+++++++ 3 ++++++")
         try:
-            with open(ll)as last_log_file:
-                logger.info(f" --------------  open  = {last_log_file}")
-                logger.info("-----------------------------------------------------------------44444")
-                return last_log_file.read()
+            logger.info("---------------------------------+++++++ 99 ++++++")
+            return ll.read()
         except OSError as e:
             logger.info("---------------------------------+++++++ 4 ++++++", exc_info=e)
             logger.info("Failed to read last patroni log file", exc_info=e)
