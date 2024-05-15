@@ -520,16 +520,16 @@ class Patroni:
             Content of last log file of Patroni service.
         """
         logger.info("---------------------------------++++++ 1 +++++++")
-        log_files = glob.glob(PATRONI_LOG)
+        container = self._charm.unit.get_container("postgresql")
         logger.info("---------------------------------+++++++ 2 ++++++")
-        if len(log_files) == 0:
-            logger.info("-----------------------------------------------------------------2222-")
-            return ""
-        latest_file = max(log_files, key=os.path.getmtime)
+        # if len(log_files) == 0:
+        #     logger.info("-----------------------------------------------------------------2222-")
+        #     return ""
+        # latest_file = max(log_files, key=os.path.getmtime)
         logger.info("---------------------------------+++++++ 3 ++++++")
         logger.info("-----------------------------------------------------------------333333")
         try:
-            with open(latest_file) as last_log_file:
+            with container.pull(PATRONI_LOG, encoding="utf-8") as last_log_file:
                 logger.info("-----------------------------------------------------------------44444")
                 return last_log_file.read()
         except OSError as e:
