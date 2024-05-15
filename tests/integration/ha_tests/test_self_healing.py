@@ -620,7 +620,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     logger.info(f" ---------------------------")
     apply_pvc_config(ops_test, pvc_config=pvc_config)
     logger.info(f" ------------scale-appp----------")
-    await scale_application(ops_test, app, 1)
+    await scale_application(ops_test, app, 1, is_blocked=True)
     logger.info(f" ------------scale-appp blocked----------")
     assert "blocked" in [
         unit.workload_status
