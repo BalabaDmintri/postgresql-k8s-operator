@@ -521,13 +521,11 @@ class Patroni:
         """
         logger.info("---------------------------------++++++ 1 +++++++")
         container = self._charm.unit.get_container("postgresql")
-        logger.info("---------------------------------+++++++ 2 ++++++")
         # if len(log_files) == 0:
         #     logger.info("-----------------------------------------------------------------2222-")
         #     return ""
         # latest_file = max(log_files, key=os.path.getmtime)
         logger.info("---------------------------------+++++++ 3 ++++++")
-        logger.info("-----------------------------------------------------------------333333")
         try:
             with container.pull(PATRONI_LOG, encoding="utf-8") as last_log_file:
                 logger.info("-----------------------------------------------------------------44444")
