@@ -503,7 +503,7 @@ class Patroni:
         last_log_file = self._last_patroni_log_file()
         logger.info("------------------------------------------------------------------")
         unit_name = unit_name.replace("/", "-")
-        logger.info("------------------------------------------------------------------")
+        logger.info(f"--------------------------------======   {last_log_file}")
         if (
             f" CRITICAL: system ID mismatch, node {unit_name} belongs to a different cluster:"
             in last_log_file
