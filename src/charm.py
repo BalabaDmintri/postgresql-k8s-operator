@@ -745,12 +745,15 @@ class PostgresqlOperatorCharm(TypedCharmBase[CharmConfig]):
         # config-changed hook.
         # Get the postgresql container so we can configure/manipulate it.
         container = event.workload
+        logger.info("------------------------------- 1 ----------------------------------")
 
         # Create the PostgreSQL data directory. This is needed on cloud environments
         # where the volume is mounted with more restrictive permissions.
         self._create_pgdata(container)
+        logger.info("------------------------------- 2 ----------------------------------")
 
         self._set_workload_version(self._patroni.rock_postgresql_version)
+        logger.info("------------------------------- 3 ----------------------------------")
 
         # Defer the initialization of the workload in the replicas
         # if the cluster hasn't been bootstrap on the primary yet.
@@ -758,6 +761,7 @@ class PostgresqlOperatorCharm(TypedCharmBase[CharmConfig]):
         # any update in the members list on the units won't have effect
         # on fixing that.
         if not self.unit.is_leader() and "cluster_initialised" not in self._peers.data[self.app]:
+            logger.info("------------------------------- 4 ----------------------------------")
             logger.debug(
                 "Deferring on_postgresql_pebble_ready: Not leader and cluster not initialized"
             )
@@ -765,8 +769,10 @@ class PostgresqlOperatorCharm(TypedCharmBase[CharmConfig]):
             return
 
         try:
+            logger.info("------------------------------- 5 ----------------------------------")
             self.push_tls_files_to_workload(container)
         except (PathError, ProtocolError) as e:
+            logger.info("------------------------------- 6 ----------------------------------")
             logger.error(
                 "Deferring on_postgresql_pebble_ready: Cannot push TLS certificates: %r", e
             )
@@ -774,29 +780,37 @@ class PostgresqlOperatorCharm(TypedCharmBase[CharmConfig]):
             return
 
         # Start the database service.
+        logger.info("------------------------------- 7 ----------------------------------")
         self._update_pebble_layers()
-
+        logger.info("------------------------------- 8 ----------------------------------")
         # Ensure the member is up and running before marking the cluster as initialised.
         if not self._patroni.member_started:
+            logger.info("------------------------------- 9 ----------------------------------")
             logger.debug("Deferring on_postgresql_pebble_ready: Waiting for cluster to start")
             self.unit.status = WaitingStatus("awaiting for cluster to start")
             event.defer()
             return
 
+        logger.info("------------------------------- 10 ----------------------------------")
         if self.unit.is_leader() and not self._initialize_cluster(event):
+            logger.info("------------------------------- 11 ----------------------------------")
             return
 
         # Update the archive command and replication configurations.
+        logger.info("------------------------------- 12 ----------------------------------")
         self.update_config()
 
         # Enable/disable PostgreSQL extensions if they were set before the cluster
         # was fully initialised.
         self.enable_disable_extensions()
+        logger.info("------------------------------- 13 ----------------------------------")
 
         # Enable pgbackrest service
+        logger.info("------------------------------- 14 ----------------------------------")
         self.backup.start_stop_pgbackrest_service()
 
         # All is well, set an ActiveStatus.
+        logger.info("------------------------------- 15 ----------------------------------")
         self._set_active_status()
 
     def _set_active_status(self):
