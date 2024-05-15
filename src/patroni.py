@@ -519,16 +519,20 @@ class Patroni:
         Returns:
             Content of last log file of Patroni service.
         """
+        logger.info("---------------------------------++++++ 1 +++++++")
         log_files = glob.glob(PATRONI_LOG)
+        logger.info("---------------------------------+++++++ 2 ++++++")
         if len(log_files) == 0:
             logger.info("-----------------------------------------------------------------2222-")
             return ""
         latest_file = max(log_files, key=os.path.getmtime)
+        logger.info("---------------------------------+++++++ 3 ++++++")
         logger.info("-----------------------------------------------------------------333333")
         try:
             with open(latest_file) as last_log_file:
                 logger.info("-----------------------------------------------------------------44444")
                 return last_log_file.read()
         except OSError as e:
-            logger.exception("Failed to read last patroni log file", exc_info=e)
+            logger.info("---------------------------------+++++++ 4 ++++++", exc_info=e)
+            logger.info("Failed to read last patroni log file", exc_info=e)
             return ""
