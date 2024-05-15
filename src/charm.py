@@ -419,6 +419,11 @@ class PostgresqlOperatorCharm(TypedCharmBase[CharmConfig]):
             return
         try:
             self.update_config()
+            if self._patroni.cluster_system_id_mismatch(unit_name=self.unit.name):
+                self.unit.status = BlockedStatus(
+                    "Failed to start postgresql. The storage belongs to a third-party cluster"
+                )
+                return
         except ValueError as e:
             self.unit.status = BlockedStatus("Configuration Error. Please check the logs")
             logger.error("Invalid configuration: %s", str(e))

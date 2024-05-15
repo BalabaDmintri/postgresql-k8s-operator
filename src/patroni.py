@@ -3,7 +3,7 @@
 # See LICENSE file for licensing details.
 
 """Helper class used to manage interactions with Patroni API and configuration files."""
-
+import glob
 import logging
 import os
 import pwd
@@ -23,7 +23,7 @@ from tenacity import (
     wait_fixed,
 )
 
-from constants import REWIND_USER, TLS_CA_FILE
+from constants import REWIND_USER, TLS_CA_FILE, PATRONI_LOG
 
 RUNNING_STATES = ["running", "streaming"]
 
@@ -490,3 +490,40 @@ class Patroni:
                 new_primary = self.get_primary()
                 if (candidate is not None and new_primary != candidate) or new_primary == primary:
                     raise SwitchoverFailedError("primary was not switched correctly")
+
+
+    def cluster_system_id_mismatch(self, unit_name: str) -> bool:
+        """Check if the Patroni service is down.
+
+        If there is the error storage belongs to third-party cluster in its logs.
+
+        Returns:
+            "True" if an error occurred due to the fact that the storage belongs to someone else's cluster.
+        """
+        last_log_file = self._last_patroni_log_file()
+        unit_name = unit_name.replace("/", "-")
+        if (
+            f" CRITICAL: system ID mismatch, node {unit_name} belongs to a different cluster:"
+            in last_log_file
+        ):
+            return True
+        return False
+
+    def _last_patroni_log_file(self) -> str:
+        """Get last log file content of Patroni service.
+
+        If there is no available log files, empty line will be returned.
+
+        Returns:
+            Content of last log file of Patroni service.
+        """
+        log_files = glob.glob(PATRONI_LOG)
+        if len(log_files) == 0:
+            return ""
+        latest_file = max(log_files, key=os.path.getmtime)
+        try:
+            with open(latest_file) as last_log_file:
+                return last_log_file.read()
+        except OSError as e:
+            logger.exception("Failed to read last patroni log file", exc_info=e)
+            return ""

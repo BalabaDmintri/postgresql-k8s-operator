@@ -85,7 +85,6 @@ def get_pv(ops_test: OpsTest, unit_name: str):
 def change_pv_reclaim_policy(ops_test: OpsTest, pv_config: GlobalResource, policy: str):
     client = Client(namespace=ops_test.model.name)
     res = client.patch(PersistentVolume, pv_config.metadata.name, {"spec": {"persistentVolumeReclaimPolicy": f"{policy}"}}, namespace=ops_test.model.name)
-    print(f"change_pv_reclaim_policy RES: {res}")
     return res
 
 def remove_pv_claimref(ops_test: OpsTest, pv_config: GlobalResource):
@@ -101,7 +100,6 @@ def change_pvc_pv_name(pvc_config: GlobalResource, pv_name_new: str):
 def apply_pvc_config(ops_test: OpsTest, pvc_config: GlobalResource):
     client = Client(namespace=ops_test.model.name)
     pvc_config.metadata.managedFields = None
-    logger.info(f" ================  {pvc_config}")
     client.apply(pvc_config, namespace=ops_test.model.name, field_manager="lightkube")
 
 # def get_pvc_config(ops_test, pvc_name: str) -> Any:
