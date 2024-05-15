@@ -501,7 +501,9 @@ class Patroni:
             "True" if an error occurred due to the fact that the storage belongs to someone else's cluster.
         """
         last_log_file = self._last_patroni_log_file()
+        logger.info("------------------------------------------------------------------")
         unit_name = unit_name.replace("/", "-")
+        logger.info("------------------------------------------------------------------")
         if (
             f" CRITICAL: system ID mismatch, node {unit_name} belongs to a different cluster:"
             in last_log_file
@@ -519,10 +521,13 @@ class Patroni:
         """
         log_files = glob.glob(PATRONI_LOG)
         if len(log_files) == 0:
+            logger.info("-----------------------------------------------------------------2222-")
             return ""
         latest_file = max(log_files, key=os.path.getmtime)
+        logger.info("-----------------------------------------------------------------333333")
         try:
             with open(latest_file) as last_log_file:
+                logger.info("-----------------------------------------------------------------44444")
                 return last_log_file.read()
         except OSError as e:
             logger.exception("Failed to read last patroni log file", exc_info=e)
