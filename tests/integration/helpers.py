@@ -663,7 +663,7 @@ async def run_command_on_unit(ops_test: OpsTest, unit_name: str, command: str) -
     return stdout
 
 
-async def scale_application(ops_test: OpsTest, application_name: str, scale: int) -> None:
+async def scale_application(ops_test: OpsTest, application_name: str, scale: int,  is_blocked: bool = False) -> None:
     """Scale a given application to a specific unit count.
 
     Args:
@@ -677,13 +677,22 @@ async def scale_application(ops_test: OpsTest, application_name: str, scale: int
             lambda: len(ops_test.model.applications[DATABASE_APP_NAME].units) == scale,
             timeout=1000,
         )
-    else:
-        await ops_test.model.wait_for_idle(
-            apps=[application_name],
-            status="active",
-            timeout=1000,
-            wait_for_exact_units=scale,
+        return
+
+    if is_blocked:
+        app = ops_test.model.applications[application_name]
+        await ops_test.model.block_until(
+            lambda: "blocked" in {unit.workload_status for unit in app.units},
+            timeout=1500,
         )
+        return
+
+    await ops_test.model.wait_for_idle(
+        apps=[application_name],
+        status="active",
+        timeout=1000,
+        wait_for_exact_units=scale,
+    )
 
 
 async def set_password(

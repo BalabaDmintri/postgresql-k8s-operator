@@ -78,7 +78,7 @@ from constants import (
     USER,
     USER_PASSWORD_KEY,
     WORKLOAD_OS_GROUP,
-    WORKLOAD_OS_USER,
+    WORKLOAD_OS_USER, UPGRADE_RELATION,
 )
 from patroni import NotReadyError, Patroni
 from relations.async_replication import PostgreSQLAsyncReplication
@@ -90,6 +90,7 @@ from utils import any_cpu_to_cores, any_memory_to_bytes, new_password
 logger = logging.getLogger(__name__)
 
 EXTENSIONS_DEPENDENCY_MESSAGE = "Unsatisfied plugin dependencies. Please check the logs"
+DIFFERENT_VERSIONS_PSQL_BLOCKING_MESSAGE = "Please select the correct version of postgresql to use. You cannot use different versions of postgresql!"
 
 # http{x,core} clutter the logs with debug messages
 logging.getLogger("httpcore").setLevel(logging.ERROR)
@@ -151,6 +152,9 @@ class PostgresqlOperatorCharm(TypedCharmBase[CharmConfig]):
         self.framework.observe(self.on.set_password_action, self._on_set_password)
         self.framework.observe(self.on.get_primary_action, self._on_get_primary)
         self.framework.observe(self.on.update_status, self._on_update_status)
+        # self.framework.observe(
+        #     self.on[UPGRADE_RELATION].relation_changed, self._on_upgrade_relation_changed
+        # )
         self._storage_path = self.meta.storages["pgdata"].location
 
         self.upgrade = PostgreSQLUpgrade(
@@ -463,6 +467,20 @@ class PostgresqlOperatorCharm(TypedCharmBase[CharmConfig]):
 
         self.async_replication.handle_read_only_mode()
 
+        self._validate_database_version()
+
+
+    def _on_upgrade_relation_changed(self, event: HookEvent):
+        if not self.unit.is_leader():
+            return
+
+        if self.upgrade.idle:
+            logger.debug("Defer _on_upgrade_relation_changed: upgrade in progress")
+            event.defer()
+            return
+
+        self._set_workload_version(self._patroni.rock_postgresql_version)
+
     def _on_config_changed(self, event) -> None:
         """Handle configuration changes, like enabling plugins."""
         if not self.is_cluster_initialised:
@@ -727,7 +745,7 @@ class PostgresqlOperatorCharm(TypedCharmBase[CharmConfig]):
         # where the volume is mounted with more restrictive permissions.
         self._create_pgdata(container)
 
-        self.unit.set_workload_version(self._patroni.rock_postgresql_version)
+        self._set_workload_version(self._patroni.rock_postgresql_version)
 
         # Defer the initialization of the workload in the replicas
         # if the cluster hasn't been bootstrap on the primary yet.
@@ -1684,6 +1702,26 @@ class PostgresqlOperatorCharm(TypedCharmBase[CharmConfig]):
             for relation in self.model.relations.get(relation_name, []):
                 relations.append(relation)
         return relations
+
+    def _set_workload_version(self, psql_version):
+        """Record the version of the software running as the workload. Also writes the version into the databags."""
+        self.unit.set_workload_version(psql_version)
+        if self.unit.is_leader():
+            self.app_peer_data.update({"database-version": psql_version})
+
+    def _validate_database_version(self):
+        """Checking that only one version of Postgres is used."""
+        peer_db_version = self.app_peer_data.get("database-version")
+
+        if self.unit.is_leader() and peer_db_version is None:
+            _psql_version = self._patroni.rock_postgresql_version
+            if _psql_version is not None:
+                self.app_peer_data.update({"database-version": _psql_version})
+            return
+
+        if peer_db_version != self._patroni.rock_postgresql_version:
+            self.unit.status = BlockedStatus(DIFFERENT_VERSIONS_PSQL_BLOCKING_MESSAGE)
+        return
 
 
 if __name__ == "__main__":

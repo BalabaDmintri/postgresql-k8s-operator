@@ -5,6 +5,7 @@
 
 DATABASE_PORT = "5432"
 PEER = "database-peers"
+UPGRADE_RELATION = "upgrade"
 BACKUP_USER = "backup"
 REPLICATION_USER = "replication"
 REPLICATION_PASSWORD_KEY = "replication-password"
