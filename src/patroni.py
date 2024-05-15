@@ -521,13 +521,17 @@ class Patroni:
         """
         logger.info("---------------------------------++++++ 1 +++++++")
         container = self._charm.unit.get_container("postgresql")
-        # if len(log_files) == 0:
-        #     logger.info("-----------------------------------------------------------------2222-")
-        #     return ""
-        # latest_file = max(log_files, key=os.path.getmtime)
+        ll = container.pull(PATRONI_LOG, encoding="utf-8")
+        logger.info(f" --------------  pull  = {ll}")
+        if len(ll) == 0:
+            logger.info("-----------------------------------------------------------------2222-")
+            return ""
+        latest_file = max(ll, key=os.path.getmtime)
+        logger.info(f" --------------  max  = {latest_file}")
         logger.info("---------------------------------+++++++ 3 ++++++")
         try:
-            with container.pull(PATRONI_LOG, encoding="utf-8") as last_log_file:
+            with open(latest_file)as last_log_file:
+                logger.info(f" --------------  open  = {last_log_file}")
                 logger.info("-----------------------------------------------------------------44444")
                 return last_log_file.read()
         except OSError as e:
