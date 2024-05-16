@@ -605,6 +605,9 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
         "pvc_name": get_pvc(ops_test, f"{app}-0")
     }
 
+    logger.info(f" second volumeName = {second_volume_data['pvc_name'].spec.volumeName}")
+    logger.info(f" app volumeName = {app_volume_data['pvc_name'].spec.volumeName}")
+
     v = second_volume_data["pv_name"]
     logger.info(f"--second name app {v.metadata.name} -----")
     second_volume_data["pv_name"] = change_pv_reclaim_policy(ops_test, pv_config=second_volume_data["pv_name"], policy="Retain")
