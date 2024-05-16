@@ -614,11 +614,9 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     delete_pvc(ops_test, pvc=second_volume_data["pvc_name"])
 
     original_pcv = app_volume_data["pvc_name"]
-    logger.info(f"-- change_pvc_pv_name pv.kube- {original_pcv.metadata.annotations['pv.kubernetes.io/bind-completed']}")
-    logger.info(f"-- change_pvc_pv_name uid- {original_pcv.metadata.uid}")
+    logger.info(f"-- change_pvc_pv_name volumeName ={original_pcv.spec.volumeName}")
     pvc_config = change_pvc_pv_name(app_volume_data["pvc_name"], second_volume_data["pv_name"].metadata.name)
-    logger.info(f"-- update pv.kube- start")
-    logger.info(f"-- update pv.kube- {pvc_config}")
+    logger.info(f"-- volumeName ={pvc_config.spec.volumeName}")
     delete_pvc(ops_test, pvc=app_volume_data["pvc_name"])
     remove_pv_claimref(ops_test, pv_config=second_volume_data["pv_name"])
     logger.info(f" ---------------------------")
