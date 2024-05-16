@@ -628,6 +628,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
         unit.workload_status
         for unit in ops_test.model.applications[app].units
     ], "Application not blocked wit third-party of storage"
+    await scale_application(ops_test, app, 0)
     # second_volume_data = get_pv_and_pvc(ops_test, second_app)
     # app_volume_data =get_pv_and_pvc(ops_test, app)
     #
