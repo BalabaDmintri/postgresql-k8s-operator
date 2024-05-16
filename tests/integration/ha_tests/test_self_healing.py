@@ -89,7 +89,7 @@ def change_pv_reclaim_policy(ops_test: OpsTest, pv_config: GlobalResource, polic
 
 def remove_pv_claimref(ops_test: OpsTest, pv_config: GlobalResource):
     client = Client(namespace=ops_test.model.name)
-    client.patch(PersistentVolume, pv_config.metadata.name, {"spec": {"claimRef":None}}, namespace=ops_test.model.name)
+    client.patch(PersistentVolume, pv_config.metadata.name, {"spec": {"claimRef": None}}, namespace=ops_test.model.name)
 
 def change_pvc_pv_name(pvc_config: GlobalResource, pv_name_new: str):
     pvc_config.spec.volumeName = pv_name_new
@@ -535,7 +535,8 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await scale_application(ops_test, app, 0)
     logger.info(f"---------- apply get_pv")
     pv = get_pv(ops_test, app)
-    logger.info(f"---------- remove claimref")
+    logger.info(f"---------- remove claimref {pv.metadata.name}")
+    sleep(60*10)
     remove_pv_claimref(ops_test, pv_config=pv)
     logger.info(f"---------- apply original")
     apply_pvc_config(ops_test, pvc_config=original_pcv)
