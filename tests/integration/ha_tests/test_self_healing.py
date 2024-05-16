@@ -523,37 +523,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await scale_application(ops_test, app, 0)
     await scale_application(ops_test, SECOND_APP_NAME, 0)
 
-    logger.info("-- second_volume_data")
-    second_volume_data = {
-        "pv_name": get_pv(ops_test, f"{SECOND_APP_NAME}-0"),
-        "pvc_name": get_pvc(ops_test, f"{SECOND_APP_NAME}-0")
-    }
-
-    logger.info("-- app_volume_data")
-    app_volume_data = {
-        "pv_name": get_pv(ops_test, f"{app}-0"),
-        "pvc_name": get_pvc(ops_test, f"{app}-0")
-    }
-
-    logger.info(f" second volumeName = {second_volume_data['pvc_name'].spec.volumeName}")
-    logger.info(f" app volumeName = {app_volume_data['pvc_name'].spec.volumeName}")
-
-    v = second_volume_data["pv_name"]
-    logger.info(f"--second name app {v.metadata.name} -----")
-    second_volume_data["pv_name"] = change_pv_reclaim_policy(ops_test, pv_config=second_volume_data["pv_name"], policy="Retain")
-    logger.info("-- remove_application")
-    await ops_test.model.remove_application(SECOND_APP_NAME, block_until_done=True)
-    logger.info("-- delete_pvc - second_volume_data")
-    delete_pvc(ops_test, pvc=second_volume_data["pvc_name"])
-
-    original_pcv = app_volume_data["pvc_name"]
-    logger.info(f"-- change_pvc_pv_name volumeName ={original_pcv.spec.volumeName}")
-    pvc_config = change_pvc_pv_name(app_volume_data["pvc_name"], second_volume_data["pv_name"].metadata.name)
-    logger.info(f"-- volumeName ={pvc_config.spec.volumeName}")
-    delete_pvc(ops_test, pvc=app_volume_data["pvc_name"])
-    remove_pv_claimref(ops_test, pv_config=second_volume_data["pv_name"])
-    logger.info(f" ---------------------------")
-    apply_pvc_config(ops_test, pvc_config=pvc_config)
+    original_pcv = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
     logger.info(f" ------------scale-appp----------")
     await scale_application(ops_test, app, 1, is_blocked=True)
     logger.info(f" ------------scale-appp blocked----------")
@@ -563,6 +533,10 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     ], "Application not blocked wit third-party of storage"
     logger.info(f"---------- scale 0")
     await scale_application(ops_test, app, 0)
+    logger.info(f"---------- apply get_pv")
+    pv = get_pv(ops_test, app)
+    logger.info(f"---------- remove claimref")
+    remove_pv_claimref(ops_test, pv_config=pv)
     logger.info(f"---------- apply original")
     apply_pvc_config(ops_test, pvc_config=original_pcv)
     logger.info(f"---------- scale 1")
@@ -625,3 +599,34 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # # Verify that no writes to the database were missed after stopping the writes.
     # logger.info("checking whether no writes to the database were missed after stopping the writes")
     # await check_writes(ops_test)
+
+
+async def reuse_storage(ops_test, application: str, secondary_application: str) -> PersistentVolumeClaim:
+    logger.info("-- second_volume_data")
+    second_volume_data = {
+        "pv_name": get_pv(ops_test, f"{secondary_application}-0"),
+        "pvc_name": get_pvc(ops_test, f"{secondary_application}-0")
+    }
+    logger.info("-- app_volume_data")
+    app_volume_data = {
+        "pv_name": get_pv(ops_test, f"{application}-0"),
+        "pvc_name": get_pvc(ops_test, f"{application}-0")
+    }
+    logger.info(f" second volumeName = {second_volume_data['pvc_name'].spec.volumeName}")
+    logger.info(f" app volumeName = {app_volume_data['pvc_name'].spec.volumeName}")
+    v = second_volume_data["pv_name"]
+    second_volume_data["pv_name"] = change_pv_reclaim_policy(ops_test, pv_config=second_volume_data["pv_name"],
+                                                             policy="Retain")
+    logger.info("-- remove_application")
+    await ops_test.model.remove_application(secondary_application, block_until_done=True)
+    logger.info("-- delete_pvc - second_volume_data")
+    delete_pvc(ops_test, pvc=second_volume_data["pvc_name"])
+    original_pcv = app_volume_data["pvc_name"]
+    logger.info(f"-- change_pvc_pv_name volumeName ={original_pcv.spec.volumeName}")
+    pvc_config = change_pvc_pv_name(app_volume_data["pvc_name"], second_volume_data["pv_name"].metadata.name)
+    logger.info(f"-- volumeName ={pvc_config.spec.volumeName}")
+    delete_pvc(ops_test, pvc=app_volume_data["pvc_name"])
+    remove_pv_claimref(ops_test, pv_config=second_volume_data["pv_name"])
+    logger.info(f" ---------------------------")
+    apply_pvc_config(ops_test, pvc_config=pvc_config)
+    return original_pcv
