@@ -509,76 +509,6 @@ async def test_network_cut(
 
     await is_cluster_updated(ops_test, primary_name)
 
-
-@pytest.mark.group(1)
-@pytest.mark.abort_on_fail
-async def test_k8s_helpers(ops_test: OpsTest):
-    async with ops_test.fast_forward():
-        await ops_test.model.deploy(
-            DATABASE_APP_NAME,
-            application_name=DATABASE_APP_NAME,
-            num_units=1,
-            channel="14/stable",
-            series=CHARM_SERIES,
-        )
-
-        await ops_test.model.wait_for_idle(status="active", timeout=1000)
-
-        assert ops_test.model.applications[DATABASE_APP_NAME].units[0].workload_status == "active"
-
-        primary_name = ops_test.model.applications[DATABASE_APP_NAME].units[0].name
-
-        primary_pvc = get_pvc(ops_test, primary_name.replace("/", "-"))
-
-        assert primary_pvc
-
-        primary_pv = get_pv(ops_test, primary_name.replace("/", "-"))
-
-        assert primary_pv
-
-        # Remove application witout storage removal
-        logger.info("scale to 0")
-        await scale_application(ops_test, DATABASE_APP_NAME, 0)
-
-        primary_pv = change_pv_reclaim_policy(ops_test, primary_pv, "Retain")
-
-        await ops_test.model.remove_application(DATABASE_APP_NAME, block_until_done=True)
-
-        delete_pvc(ops_test, primary_pvc)
-
-        await ops_test.model.deploy(
-            DATABASE_APP_NAME,
-            application_name=DUP_DATABASE_APP_NAME,
-            num_units=1,
-            channel="14/stable",
-            series=CHARM_SERIES,
-        )
-
-        await ops_test.model.wait_for_idle(status="active", timeout=1000)
-
-        assert ops_test.model.applications[DUP_DATABASE_APP_NAME].units[0].workload_status == "active"
-
-        dup_primary_name = ops_test.model.applications[DUP_DATABASE_APP_NAME].units[0].name
-
-        dup_primary_pvc = get_pvc(ops_test, dup_primary_name.replace("/", "-"))
-
-        assert primary_pvc
-
-        # Remove application witout storage removal
-        logger.info("scale to 0")
-        await scale_application(ops_test, DUP_DATABASE_APP_NAME, 0)
-
-        dup_primary_pvc = change_pvc_pv_name(dup_primary_pvc, primary_pv.metadata.name)
-
-        delete_pvc(ops_test, dup_primary_pvc)
-
-        remove_pv_claimref(ops_test, primary_pv)
-
-        apply_pvc_config(ops_test, dup_primary_pvc)
-
-        logger.info("scale to 1")
-        await ops_test.model.applications[DUP_DATABASE_APP_NAME].scale(1)
-
 @pytest.mark.group(1)
 async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     """Scale the database to zero units and scale up again."""
@@ -631,7 +561,14 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
         unit.workload_status
         for unit in ops_test.model.applications[app].units
     ], "Application not blocked wit third-party of storage"
+    logger.info(f"---------- scale 0")
     await scale_application(ops_test, app, 0)
+    logger.info(f"---------- apply original")
+    apply_pvc_config(ops_test, pvc_config=original_pcv)
+    logger.info(f"---------- scale 1")
+    await scale_application(ops_test, app, 1)
+    logger.info(f"---------- check_writes")
+    await check_writes(ops_test)
     # second_volume_data = get_pv_and_pvc(ops_test, second_app)
     # app_volume_data =get_pv_and_pvc(ops_test, app)
     #

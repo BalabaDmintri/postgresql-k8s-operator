@@ -501,9 +501,7 @@ class Patroni:
             "True" if an error occurred due to the fact that the storage belongs to someone else's cluster.
         """
         last_log_file = self._last_patroni_log_file()
-        logger.info("------------------------------------------------------------------")
         unit_name = unit_name.replace("/", "-")
-        logger.info(f"--------------------------------======   {last_log_file}")
         if (
             f" CRITICAL: system ID mismatch, node {unit_name} belongs to a different cluster:"
             in last_log_file
@@ -519,15 +517,10 @@ class Patroni:
         Returns:
             Content of last log file of Patroni service.
         """
-        logger.info("---------------------------------++++++ 1 +++++++")
         container = self._charm.unit.get_container("postgresql")
         ll = container.pull(PATRONI_LOG, encoding="utf-8")
-        logger.info(f" --------------  pull  = {ll}")
-        logger.info("---------------------------------+++++++ 3 ++++++")
         try:
-            logger.info("---------------------------------+++++++ 99 ++++++")
             return ll.read()
         except OSError as e:
-            logger.info("---------------------------------+++++++ 4 ++++++", exc_info=e)
             logger.info("Failed to read last patroni log file", exc_info=e)
             return ""
