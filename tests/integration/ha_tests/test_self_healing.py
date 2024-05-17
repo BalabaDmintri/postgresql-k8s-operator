@@ -648,4 +648,6 @@ async def reuse_storage(ops_test, application: str, secondary_application: str):
     remove_pv_claimref(ops_test, pv_config=second_volume_data["pv"])
     logger.info(f" ---------------------------")
     apply_pvc_config(ops_test, pvc_config=pvc_config)
+    logger.info(f" updated volumeName = {pvc_config.spec.volumeName}")
+    logger.info(f" original volumeName = {original_pcv.spec.volumeName}")
     return original_pcv, pvc_config
