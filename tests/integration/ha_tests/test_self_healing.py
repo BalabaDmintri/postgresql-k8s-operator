@@ -532,6 +532,8 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await scale_application(ops_test, SECOND_APP_NAME, 0)
 
     original_pvc, updated_pvc = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
+    logger.info("=---------------------------- sleep")
+    sleep(60 * 5)
     logger.info(f" ------------scale-appp----------")
     await scale_application(ops_test, app, 1, is_blocked=True)
     logger.info(f" ------------scale-appp blocked----------")
@@ -634,26 +636,37 @@ async def reuse_storage(ops_test, application: str, secondary_application: str):
     }
     logger.info(f" second volumeName = {second_volume_data['pvc'].spec.volumeName}")
     logger.info(f" second path = {second_volume_data['pv'].spec.hostPath.path}")
-    logger.info(f" second namespace = {second_volume_data['pv'].metadata.namespace}")
+    logger.info(f" second pvc namespace = {second_volume_data['pvc'].metadata.namespace}")
 
     logger.info(f" app volumeName = {app_volume_data['pvc'].spec.volumeName}")
     logger.info(f" app path = {app_volume_data['pv'].spec.hostPath.path}")
-    logger.info(f" app namespace = {app_volume_data['pv'].metadata.namespace}")
+    logger.info(f" app pvc namespace = {app_volume_data['pvc'].metadata.namespace}")
 
     v = second_volume_data["pv"]
     second_volume_data["pv"] = change_pv_reclaim_policy(ops_test, pv_config=second_volume_data["pv"], policy="Retain")
     logger.info("-- remove_application")
     await ops_test.model.remove_application(secondary_application, block_until_done=True)
-    logger.info("-- delete_pvc - second_volume_data")
+    logger.info("=---------------------------- sleep")
+    sleep(60*3)
     delete_pvc(ops_test, pvc=second_volume_data["pvc"])
     original_pcv = app_volume_data["pvc"]
     logger.info(f"-- change_pvc_pv volumeName ={original_pcv.spec.volumeName}")
+    logger.info("=---------------------------- sleep")
+    sleep(60 * 3)
     pvc_config = change_pvc_pv_name(app_volume_data["pvc"], second_volume_data["pv"].metadata.name)
     logger.info(f"-- volumeName ={pvc_config.spec.volumeName}")
+    logger.info("=---------------------------- sleep")
+    sleep(60 * 3)
     delete_pvc(ops_test, pvc=app_volume_data["pvc"])
+    logger.info("=---------------------------- sleep")
+    sleep(60 * 5)
     remove_pv_claimref(ops_test, pv_config=second_volume_data["pv"])
+    logger.info("=---------------------------- sleep")
+    sleep(60 * 5)
+
     logger.info(f" ---------------------------")
     apply_pvc_config(ops_test, pvc_config=pvc_config)
+
     logger.info(f" updated volumeName = {pvc_config.spec.volumeName}")
     logger.info(f" original volumeName = {original_pcv.spec.volumeName}")
     return original_pcv, pvc_config
