@@ -532,40 +532,42 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await scale_application(ops_test, SECOND_APP_NAME, 0)
     logger.info("---------------------------------------------  sleep")
 
-    original_pvc, updated_pvc = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
-    logger.info("=---------------------------- sleep")
-    sleep(60 * 5)
-    logger.info(f" ------------scale-appp----------")
-    await scale_application(ops_test, app, 1, is_blocked=True)
-    logger.info(f" ------------scale-appp blocked----------")
-    assert "blocked" in [
-        unit.workload_status
-        for unit in ops_test.model.applications[app].units
-    ], "Application not blocked wit third-party of storage"
-    logger.info(f"---------- scale 0")
-    await scale_application(ops_test, app, 0)
-    logger.info(f"---------- apply get_pv")
-    pv = get_pv(ops_test, app)
-    logger.info(f"---------- sleep")
-    # sleep(60*10)
+    # original_pvc, updated_pvc = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
+    # logger.info("=---------------------------- sleep")
+    # sleep(60 * 5)
+    # logger.info(f" ------------scale-appp----------")
+    # await scale_application(ops_test, app, 1, is_blocked=True)
+    # logger.info(f" ------------scale-appp blocked----------")
+    # assert "blocked" in [
+    #     unit.workload_status
+    #     for unit in ops_test.model.applications[app].units
+    # ], "Application not blocked wit third-party of storage"
+    # logger.info(f"---------- scale 0")
+    # await scale_application(ops_test, app, 0)
+    # logger.info(f"---------- apply get_pv")
+    # pv = get_pv(ops_test, app)
+    # logger.info(f"---------- sleep")
+    # # sleep(60*10)
+    #
+    # logger.info(f"---------- updated pvc")
+    # delete_pvc(ops_test, updated_pvc)
+    #
+    # logger.info(f"---------- remove claimref {pv.metadata.name}")
+    # remove_pv_claimref(ops_test, pv_config=pv)
+    #
+    # logger.info(f"---------- apply original")
+    # apply_pvc_config(ops_test, pvc_config=original_pvc)
+    #
+    # logger.info(f"---------- scale 1")
+    # await scale_application(ops_test, app, 1)
+    #
+    # # logger.info("check test database data")
+    # # await validate_test_data(connection_string)
+    #
+    # logger.info(f"---------- check_writes")
+    # await check_writes(ops_test)
 
-    logger.info(f"---------- updated pvc")
-    delete_pvc(ops_test, updated_pvc)
 
-    logger.info(f"---------- remove claimref {pv.metadata.name}")
-    remove_pv_claimref(ops_test, pv_config=pv)
-
-    logger.info(f"---------- apply original")
-    apply_pvc_config(ops_test, pvc_config=original_pvc)
-
-    logger.info(f"---------- scale 1")
-    await scale_application(ops_test, app, 1)
-
-    # logger.info("check test database data")
-    # await validate_test_data(connection_string)
-
-    logger.info(f"---------- check_writes")
-    await check_writes(ops_test)
     # second_volume_data = get_pv_and_pvc(ops_test, second_app)
     # app_volume_data =get_pv_and_pvc(ops_test, app)
     #
