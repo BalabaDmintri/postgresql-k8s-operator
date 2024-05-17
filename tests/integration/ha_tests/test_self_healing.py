@@ -523,7 +523,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await scale_application(ops_test, app, 0)
     await scale_application(ops_test, SECOND_APP_NAME, 0)
 
-    original_pcv = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
+    original_pvc, updated_pvc = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
     logger.info(f" ------------scale-appp----------")
     await scale_application(ops_test, app, 1, is_blocked=True)
     logger.info(f" ------------scale-appp blocked----------")
@@ -536,13 +536,20 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     logger.info(f"---------- apply get_pv")
     pv = get_pv(ops_test, app)
     logger.info(f"---------- sleep")
-    sleep(60*10)
+    # sleep(60*10)
+
+    logger.info(f"---------- updated pvc")
+    delete_pvc(ops_test, updated_pvc)
+
     logger.info(f"---------- remove claimref {pv.metadata.name}")
     remove_pv_claimref(ops_test, pv_config=pv)
+
     logger.info(f"---------- apply original")
-    apply_pvc_config(ops_test, pvc_config=original_pcv)
+    apply_pvc_config(ops_test, pvc_config=original_pvc)
+
     logger.info(f"---------- scale 1")
     await scale_application(ops_test, app, 1)
+
     logger.info(f"---------- check_writes")
     await check_writes(ops_test)
     # second_volume_data = get_pv_and_pvc(ops_test, second_app)
@@ -603,7 +610,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # await check_writes(ops_test)
 
 
-async def reuse_storage(ops_test, application: str, secondary_application: str) -> PersistentVolumeClaim:
+async def reuse_storage(ops_test, application: str, secondary_application: str):
     logger.info("-- second_volume_data")
     second_volume_data = {
         "pv_name": get_pv(ops_test, f"{secondary_application}-0"),
@@ -631,4 +638,4 @@ async def reuse_storage(ops_test, application: str, secondary_application: str) 
     remove_pv_claimref(ops_test, pv_config=second_volume_data["pv_name"])
     logger.info(f" ---------------------------")
     apply_pvc_config(ops_test, pvc_config=pvc_config)
-    return original_pcv
+    return original_pcv, updated_pvc
