@@ -633,7 +633,13 @@ async def reuse_storage(ops_test, application: str, secondary_application: str):
         "pvc": get_pvc(ops_test, f"{application}-0")
     }
     logger.info(f" second volumeName = {second_volume_data['pvc'].spec.volumeName}")
+    logger.info(f" second path = {second_volume_data['pv'].spec.hostPath.path}")
+    logger.info(f" second namespace = {second_volume_data['pv'].metadata.namespace}")
+
     logger.info(f" app volumeName = {app_volume_data['pvc'].spec.volumeName}")
+    logger.info(f" app path = {app_volume_data['pv'].spec.hostPath.path}")
+    logger.info(f" app namespace = {app_volume_data['pv'].metadata.namespace}")
+
     v = second_volume_data["pv"]
     second_volume_data["pv"] = change_pv_reclaim_policy(ops_test, pv_config=second_volume_data["pv"], policy="Retain")
     logger.info("-- remove_application")
