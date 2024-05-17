@@ -759,3 +759,36 @@ async def stop_continuous_writes(ops_test: OpsTest) -> int:
     )
     action = await action.wait()
     return int(action.results["writes"])
+
+async def create_test_data(connection_string: str):
+    """Creating test data in the database.
+
+    Args:
+      connection_string: Database connection string
+    """
+    with psycopg2.connect(connection_string) as connection:
+        connection.autocommit = True
+        with connection.cursor() as cursor:
+            # Check that it's possible to write and read data from the database that
+            # was created for the application.
+            cursor.execute("DROP TABLE IF EXISTS test;")
+            cursor.execute("CREATE TABLE test(data TEXT);")
+            cursor.execute("INSERT INTO test(data) VALUES('some data');")
+            cursor.execute("SELECT data FROM test;")
+            data = cursor.fetchone()
+            assert data[0] == "some data"
+    connection.close()
+
+async def validate_test_data(connection_string):
+    """Checking test data.
+
+    Args:
+      connection_string: Database connection string
+    """
+    with psycopg2.connect(connection_string) as connection:
+        connection.autocommit = True
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT data FROM test;")
+            data = cursor.fetchone()
+            assert data[0] == "some data"
+    connection.close()

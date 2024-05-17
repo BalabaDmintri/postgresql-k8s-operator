@@ -48,7 +48,7 @@ from .helpers import (
     modify_pebble_restart_delay,
     remove_instance_isolation,
     send_signal_to_process,
-    start_continuous_writes,
+    start_continuous_writes, create_test_data, validate_test_data,
 )
 from ..new_relations.helpers import build_connection_string
 from ..new_relations.test_new_relations import FIRST_DATABASE_RELATION_NAME, APPLICATION_APP_NAME
@@ -518,6 +518,14 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # # Start an application that continuously writes data to the database.
     await start_continuous_writes(ops_test, app)
 
+    # # Get the connection string to connect to the database using the read/write endpoint.
+    # connection_string = await build_connection_string(
+    #     ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
+    # )
+    #
+    # logger.info("connect to DB and create test table")
+    # await create_test_data(connection_string)
+
     # Scale the database to zero units.
     logger.info("scaling database to zero units")
     await scale_application(ops_test, app, 0)
@@ -549,6 +557,9 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
 
     logger.info(f"---------- scale 1")
     await scale_application(ops_test, app, 1)
+
+    # logger.info("check test database data")
+    # await validate_test_data(connection_string)
 
     logger.info(f"---------- check_writes")
     await check_writes(ops_test)
@@ -613,29 +624,28 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
 async def reuse_storage(ops_test, application: str, secondary_application: str):
     logger.info("-- second_volume_data")
     second_volume_data = {
-        "pv_name": get_pv(ops_test, f"{secondary_application}-0"),
-        "pvc_name": get_pvc(ops_test, f"{secondary_application}-0")
+        "pv": get_pv(ops_test, f"{secondary_application}-0"),
+        "pvc": get_pvc(ops_test, f"{secondary_application}-0")
     }
     logger.info("-- app_volume_data")
     app_volume_data = {
-        "pv_name": get_pv(ops_test, f"{application}-0"),
-        "pvc_name": get_pvc(ops_test, f"{application}-0")
+        "pv": get_pv(ops_test, f"{application}-0"),
+        "pvc": get_pvc(ops_test, f"{application}-0")
     }
-    logger.info(f" second volumeName = {second_volume_data['pvc_name'].spec.volumeName}")
-    logger.info(f" app volumeName = {app_volume_data['pvc_name'].spec.volumeName}")
-    v = second_volume_data["pv_name"]
-    second_volume_data["pv_name"] = change_pv_reclaim_policy(ops_test, pv_config=second_volume_data["pv_name"],
-                                                             policy="Retain")
+    logger.info(f" second volumeName = {second_volume_data['pvc'].spec.volumeName}")
+    logger.info(f" app volumeName = {app_volume_data['pvc'].spec.volumeName}")
+    v = second_volume_data["pv"]
+    second_volume_data["pv"] = change_pv_reclaim_policy(ops_test, pv_config=second_volume_data["pv"], policy="Retain")
     logger.info("-- remove_application")
     await ops_test.model.remove_application(secondary_application, block_until_done=True)
     logger.info("-- delete_pvc - second_volume_data")
-    delete_pvc(ops_test, pvc=second_volume_data["pvc_name"])
-    original_pcv = app_volume_data["pvc_name"]
-    logger.info(f"-- change_pvc_pv_name volumeName ={original_pcv.spec.volumeName}")
-    pvc_config = change_pvc_pv_name(app_volume_data["pvc_name"], second_volume_data["pv_name"].metadata.name)
+    delete_pvc(ops_test, pvc=second_volume_data["pvc"])
+    original_pcv = app_volume_data["pvc"]
+    logger.info(f"-- change_pvc_pv volumeName ={original_pcv.spec.volumeName}")
+    pvc_config = change_pvc_pv_name(app_volume_data["pvc"], second_volume_data["pv"].metadata.name)
     logger.info(f"-- volumeName ={pvc_config.spec.volumeName}")
-    delete_pvc(ops_test, pvc=app_volume_data["pvc_name"])
-    remove_pv_claimref(ops_test, pv_config=second_volume_data["pv_name"])
+    delete_pvc(ops_test, pvc=app_volume_data["pvc"])
+    remove_pv_claimref(ops_test, pv_config=second_volume_data["pv"])
     logger.info(f" ---------------------------")
     apply_pvc_config(ops_test, pvc_config=pvc_config)
-    return original_pcv, updated_pvc
+    return original_pcv, pvc_config
