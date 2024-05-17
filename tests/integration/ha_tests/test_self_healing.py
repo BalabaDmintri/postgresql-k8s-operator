@@ -530,6 +530,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     logger.info("scaling database to zero units")
     await scale_application(ops_test, app, 0)
     await scale_application(ops_test, SECOND_APP_NAME, 0)
+    logger.info("---------------------------------------------  sleep")
 
     original_pvc, updated_pvc = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
     logger.info("=---------------------------- sleep")
