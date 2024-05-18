@@ -102,55 +102,6 @@ def apply_pvc_config(ops_test: OpsTest, pvc_config: GlobalResource):
     pvc_config.metadata.managedFields = None
     client.apply(pvc_config, namespace=ops_test.model.name, field_manager="lightkube")
 
-# def get_pvc_config(ops_test, pvc_name: str) -> Any:
-#     command = f"kubectl -n {ops_test.model.name} get pvc {pvc_name} -o yaml"
-#     output = subprocess.check_output(command, shell=True)
-#     return yaml.safe_load(output)
-#
-# def get_pv_and_pvc(ops_test, application_name: str):
-#     command = "kubectl get pv -o jsonpath='{range .items[*]}{@.metadata.name}_{@.spec.claimRef.name} '"
-#     output = subprocess.check_output(command, shell=True, text=True)
-#     split_str = output.split(" ")
-#     assert len(split_str) != 0, "Not found pv and pvc"
-#
-#     for s in split_str:
-#         if application_name in s:
-#             out = s.split("_")
-#             assert len(out) == 2, "not found persistence volume id"
-#             return {"pv_name": out[0], "pvc_name": out[1]}
-#     return
-#
-# def delete_pvc(ops_test, pvc_name: str):
-#     command = f"kubectl -n {ops_test.model.name} delete pvc {pvc_name}"
-#     subprocess.check_output(command, shell=True)
-#
-# def retain_volume(ops_test, pv_name: str) -> None:
-#     command = " ".join(["kubectl",
-#                         "-n",
-#                         ops_test.model.name,
-#                         "patch",
-#                         "pv",
-#                         pv_name,
-#                         "-p",
-#                         "'{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Retain\"}}'"])
-#     subprocess.check_output(command, shell=True, text=True)
-#
-# def retain_volume(ops_test, pv_name: str, patch_data: str):
-#     command = " ".join(["kubectl",
-#                         "-n",
-#                         ops_test.model.name,
-#                         "patch",
-#                         "pv",
-#                         pv_name,
-#                         "-p",
-#                         patch_data])
-#     subprocess.check_output(command, shell=True, text=True)
-#
-# def apply_conf(conf):
-#     subprocess.check_output(
-#             " ".join(["kubectl", "apply", "-f", conf]), shell=True
-#         )
-
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
@@ -557,6 +508,8 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
 
     logger.info(f"---------- apply original")
     apply_pvc_config(ops_test, pvc_config=original_pvc)
+    second_pv = get_pv(ops_test, SECOND_APP_NAME)
+    change_pv_reclaim_policy(ops_test,pv_config=second_pv, policy="Delete")
 
     logger.info(f"---------- scale 1")
     await scale_application(ops_test, app, 1)
