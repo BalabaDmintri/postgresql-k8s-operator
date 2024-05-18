@@ -516,17 +516,17 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     ], "Application not blocked wit third-party of storage"
     logger.info(f"---------- scale 0")
     await scale_application(ops_test, app, 0)
-    logger.info(f"---------- apply get_pv")
-    pv = get_pv(ops_test, app)
 
     logger.info(f"---------- updated pvc")
+    logger.info(f"----------  pvc ==== {updated_pvc}")
     delete_pvc(ops_test, updated_pvc)
 
-    logger.info(f"---------- remove claimref {pv.metadata.name}")
-    remove_pv_claimref(ops_test, pv_config=pv)
-
+    logger.info(f"----------  original pvc ==== {storage.original.pvc}")
     logger.info(f"---------- apply original")
     apply_pvc_config(ops_test, pvc_config=storage.original.pvc)
+
+    logger.info("===========    sleep ===============")
+    sleep(60*20)
     change_pv_reclaim_policy(ops_test, pv_config=storage.secondary.pv, policy="Delete")
 
     logger.info(f"---------- scale 1")
