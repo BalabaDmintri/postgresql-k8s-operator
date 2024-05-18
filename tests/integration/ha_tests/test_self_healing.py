@@ -71,7 +71,7 @@ class Storage:
             self.pvc = pvc
 
     def __init__(self, primary: Volume, secondary: Volume):
-        self.original = copy.deepcopy(primary)
+        self.volumeName = primary.pv.metadata.name
         self.primary = primary
         self.secondary = secondary
 
@@ -519,16 +519,17 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await scale_application(ops_test, app, 0)
 
     logger.info(f"---------- updated pvc")
-    logger.info(f"---------- sleep --------------------")
-    sleep(60*120)
+    # logger.info(f"---------- sleep --------------------")
+    # sleep(60*120)
 
+    new_pvc = change_pvc_pv_name(updated_pvc, storage.volumeName)
     delete_pvc(ops_test, updated_pvc)
     remove_pv_claimref(ops_test, pv_config=storage.secondary.pv)
     remove_pv_claimref(ops_test, pv_config=storage.primary.pv)
 
     logger.info(f"----------  original pvc ==== {storage.original.pvc}")
     logger.info(f"---------- apply original")
-    apply_pvc_config(ops_test, pvc_config=storage.original.pvc)
+    apply_pvc_config(ops_test, pvc_config=new_pvc)
 
     # logger.info("===========    sleep ===============")
     # sleep(60*20)
