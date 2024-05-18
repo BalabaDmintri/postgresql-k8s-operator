@@ -522,7 +522,8 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # logger.info(f"---------- sleep --------------------")
     # sleep(60*120)
 
-    new_pvc = change_pvc_pv_name(updated_pvc, storage.volumeName)
+    updated_pvc.spec.volumeName = storage.volumeName
+    new_pvc = copy.deepcopy(updated_pvc)
     delete_pvc(ops_test, updated_pvc)
     remove_pv_claimref(ops_test, pv_config=storage.secondary.pv)
     remove_pv_claimref(ops_test, pv_config=storage.primary.pv)
