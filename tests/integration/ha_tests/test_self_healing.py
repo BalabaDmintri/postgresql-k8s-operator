@@ -507,8 +507,6 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     logger.info("---------------------------------------------  re use")
 
     storage, updated_pvc = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
-    logger.info("=---------------------------- sleep")
-    sleep(60 * 5)
     logger.info(f" ------------scale-appp----------")
     await scale_application(ops_test, app, 1, is_blocked=True)
     logger.info(f" ------------scale-appp blocked----------")
