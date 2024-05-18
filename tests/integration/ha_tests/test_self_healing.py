@@ -527,7 +527,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     remove_pv_claimref(ops_test, pv_config=storage.secondary.pv)
     remove_pv_claimref(ops_test, pv_config=storage.primary.pv)
 
-    logger.info(f"----------  original pvc ==== {storage.original.pvc}")
+    logger.info(f"----------  original pvc ==== {storage.volumeName}")
     logger.info(f"---------- apply original")
     apply_pvc_config(ops_test, pvc_config=new_pvc)
 
