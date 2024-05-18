@@ -518,8 +518,6 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await scale_application(ops_test, app, 0)
     logger.info(f"---------- apply get_pv")
     pv = get_pv(ops_test, app)
-    logger.info(f"---------- sleep")
-    sleep(60 * 10)
 
     logger.info(f"---------- updated pvc")
     delete_pvc(ops_test, updated_pvc)
@@ -619,8 +617,8 @@ async def reuse_storage(ops_test, application: str, secondary_application: str):
     logger.info(f" app path = {storage.primary.pv.spec.hostPath.path}")
     logger.info(f" app pvc namespace = {storage.primary.pvc.metadata.namespace}")
 
-
-    changed_secondary_pv = change_pv_reclaim_policy(ops_test, pv_config=storage.secondary.pv, policy="Retain")
+    storage.secondary.pv = change_pv_reclaim_policy(ops_test, pv_config=storage.secondary.pv, policy="Retain")
+    storage.primary.pv = change_pv_reclaim_policy(ops_test, pv_config=storage.primary.pv, policy="Retain")
     logger.info("-- remove_application")
     await ops_test.model.remove_application(secondary_application, block_until_done=True)
     # logger.info("=---------------------------- sleep")
@@ -629,7 +627,7 @@ async def reuse_storage(ops_test, application: str, secondary_application: str):
     logger.info(f"-- change_pvc_pv volumeName ={storage.original.pvc.spec.volumeName}")
     # logger.info("=---------------------------- sleep")
     # sleep(60 * 3)
-    pvc_config = change_pvc_pv_name(storage.primary.pvc, changed_secondary_pv.metadata.name)
+    pvc_config = change_pvc_pv_name(storage.primary.pvc, storage.secondary.pv.metadata.name)
     logger.info(f"-- volumeName ={pvc_config.spec.volumeName}")
     # logger.info("=---------------------------- sleep")
     # sleep(60 * 3)
