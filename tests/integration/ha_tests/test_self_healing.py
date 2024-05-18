@@ -518,54 +518,54 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # # Start an application that continuously writes data to the database.
     await start_continuous_writes(ops_test, app)
 
-    # # Get the connection string to connect to the database using the read/write endpoint.
-    # connection_string = await build_connection_string(
-    #     ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
-    # )
-    #
-    # logger.info("connect to DB and create test table")
-    # await create_test_data(connection_string)
+    # Get the connection string to connect to the database using the read/write endpoint.
+    connection_string = await build_connection_string(
+        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
+    )
+
+    logger.info("connect to DB and create test table")
+    await create_test_data(connection_string)
 
     # Scale the database to zero units.
     logger.info("scaling database to zero units")
     await scale_application(ops_test, app, 0)
     await scale_application(ops_test, SECOND_APP_NAME, 0)
-    logger.info("---------------------------------------------  sleep")
+    logger.info("---------------------------------------------  re use")
 
-    # original_pvc, updated_pvc = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
-    # logger.info("=---------------------------- sleep")
-    # sleep(60 * 5)
-    # logger.info(f" ------------scale-appp----------")
-    # await scale_application(ops_test, app, 1, is_blocked=True)
-    # logger.info(f" ------------scale-appp blocked----------")
-    # assert "blocked" in [
-    #     unit.workload_status
-    #     for unit in ops_test.model.applications[app].units
-    # ], "Application not blocked wit third-party of storage"
-    # logger.info(f"---------- scale 0")
-    # await scale_application(ops_test, app, 0)
-    # logger.info(f"---------- apply get_pv")
-    # pv = get_pv(ops_test, app)
-    # logger.info(f"---------- sleep")
-    # # sleep(60*10)
-    #
-    # logger.info(f"---------- updated pvc")
-    # delete_pvc(ops_test, updated_pvc)
-    #
-    # logger.info(f"---------- remove claimref {pv.metadata.name}")
-    # remove_pv_claimref(ops_test, pv_config=pv)
-    #
-    # logger.info(f"---------- apply original")
-    # apply_pvc_config(ops_test, pvc_config=original_pvc)
-    #
-    # logger.info(f"---------- scale 1")
-    # await scale_application(ops_test, app, 1)
-    #
-    # # logger.info("check test database data")
-    # # await validate_test_data(connection_string)
-    #
-    # logger.info(f"---------- check_writes")
-    # await check_writes(ops_test)
+    original_pvc, updated_pvc = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
+    logger.info("=---------------------------- sleep")
+    sleep(60 * 5)
+    logger.info(f" ------------scale-appp----------")
+    await scale_application(ops_test, app, 1, is_blocked=True)
+    logger.info(f" ------------scale-appp blocked----------")
+    assert "blocked" in [
+        unit.workload_status
+        for unit in ops_test.model.applications[app].units
+    ], "Application not blocked wit third-party of storage"
+    logger.info(f"---------- scale 0")
+    await scale_application(ops_test, app, 0)
+    logger.info(f"---------- apply get_pv")
+    pv = get_pv(ops_test, app)
+    logger.info(f"---------- sleep")
+    # sleep(60*10)
+
+    logger.info(f"---------- updated pvc")
+    delete_pvc(ops_test, updated_pvc)
+
+    logger.info(f"---------- remove claimref {pv.metadata.name}")
+    remove_pv_claimref(ops_test, pv_config=pv)
+
+    logger.info(f"---------- apply original")
+    apply_pvc_config(ops_test, pvc_config=original_pvc)
+
+    logger.info(f"---------- scale 1")
+    await scale_application(ops_test, app, 1)
+
+    # logger.info("check test database data")
+    # await validate_test_data(connection_string)
+
+    logger.info(f"---------- check_writes")
+    await check_writes(ops_test)
 
 
     # second_volume_data = get_pv_and_pvc(ops_test, second_app)
@@ -650,22 +650,22 @@ async def reuse_storage(ops_test, application: str, secondary_application: str):
     logger.info("-- remove_application")
     await ops_test.model.remove_application(secondary_application, block_until_done=True)
     logger.info("=---------------------------- sleep")
-    sleep(60*3)
+    # sleep(60*3)
     delete_pvc(ops_test, pvc=second_volume_data["pvc"])
     original_pcv = app_volume_data["pvc"]
     logger.info(f"-- change_pvc_pv volumeName ={original_pcv.spec.volumeName}")
     logger.info("=---------------------------- sleep")
-    sleep(60 * 3)
+    # sleep(60 * 3)
     pvc_config = change_pvc_pv_name(app_volume_data["pvc"], second_volume_data["pv"].metadata.name)
     logger.info(f"-- volumeName ={pvc_config.spec.volumeName}")
     logger.info("=---------------------------- sleep")
-    sleep(60 * 3)
+    # sleep(60 * 3)
     delete_pvc(ops_test, pvc=app_volume_data["pvc"])
     logger.info("=---------------------------- sleep")
-    sleep(60 * 5)
+    # sleep(60 * 5)
     remove_pv_claimref(ops_test, pv_config=second_volume_data["pv"])
     logger.info("=---------------------------- sleep")
-    sleep(60 * 5)
+    # sleep(60 * 5)
 
     logger.info(f" ---------------------------")
     apply_pvc_config(ops_test, pvc_config=pvc_config)
