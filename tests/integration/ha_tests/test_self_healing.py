@@ -2,6 +2,7 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
+import copy
 import logging
 import subprocess
 from time import sleep
@@ -62,9 +63,22 @@ POSTGRESQL_PROCESS = "postgres"
 DB_PROCESSES = [POSTGRESQL_PROCESS, PATRONI_PROCESS]
 MEDIAN_ELECTION_TIME = 10
 
-def delete_pvc(ops_test: OpsTest, pvc: GlobalResource):
+
+class Storage:
+    class Volume:
+        def __init__(self, pv: PersistentVolume, pvc: PersistentVolumeClaim):
+            self.pv = pv
+            self.pvc = pvc
+
+    def __init__(self, primary: Volume, secondary: Volume):
+        self.original = copy.deepcopy(primary)
+        self.primary = primary
+        self.secondary = secondary
+
+def delete_pvc(ops_test: OpsTest, pvc: PersistentVolumeClaim):
     client = Client(namespace=ops_test.model.name)
     client.delete(PersistentVolumeClaim, namespace=ops_test.model.name, name=pvc.metadata.name)
+
 
 def get_pvc(ops_test: OpsTest, unit_name: str):
     client = Client(namespace=ops_test.model.name)
@@ -74,6 +88,7 @@ def get_pvc(ops_test: OpsTest, unit_name: str):
             return pvc
     return None
 
+
 def get_pv(ops_test: OpsTest, unit_name: str):
     client = Client(namespace=ops_test.model.name)
     pv_list = client.list(PersistentVolume, namespace=ops_test.model.name)
@@ -82,25 +97,31 @@ def get_pv(ops_test: OpsTest, unit_name: str):
             return pv
     return None
 
+
 def change_pv_reclaim_policy(ops_test: OpsTest, pv_config: GlobalResource, policy: str):
     client = Client(namespace=ops_test.model.name)
-    res = client.patch(PersistentVolume, pv_config.metadata.name, {"spec": {"persistentVolumeReclaimPolicy": f"{policy}"}}, namespace=ops_test.model.name)
+    res = client.patch(PersistentVolume, pv_config.metadata.name,
+                       {"spec": {"persistentVolumeReclaimPolicy": f"{policy}"}}, namespace=ops_test.model.name)
     return res
+
 
 def remove_pv_claimref(ops_test: OpsTest, pv_config: GlobalResource):
     client = Client(namespace=ops_test.model.name)
     client.patch(PersistentVolume, pv_config.metadata.name, {"spec": {"claimRef": None}}, namespace=ops_test.model.name)
 
-def change_pvc_pv_name(pvc_config: GlobalResource, pv_name_new: str):
+
+def change_pvc_pv_name(pvc_config: PersistentVolumeClaim, pv_name_new: str):
     pvc_config.spec.volumeName = pv_name_new
     del pvc_config.metadata.annotations['pv.kubernetes.io/bind-completed']
     del pvc_config.metadata.uid
     return pvc_config
 
-def apply_pvc_config(ops_test: OpsTest, pvc_config: GlobalResource):
+
+def apply_pvc_config(ops_test: OpsTest, pvc_config: PersistentVolumeClaim):
     client = Client(namespace=ops_test.model.name)
     pvc_config.metadata.managedFields = None
     client.apply(pvc_config, namespace=ops_test.model.name, field_manager="lightkube")
+
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
@@ -136,11 +157,12 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         second_primary = ops_test.model.applications[SECOND_APP_NAME].units[0].name
         await set_password(ops_test, second_primary, user, password)
 
+
 @pytest.mark.group(1)
 @markers.juju2
 @pytest.mark.parametrize("process", DB_PROCESSES)
 async def test_kill_db_process(
-    ops_test: OpsTest, process: str, continuous_writes, primary_start_timeout
+        ops_test: OpsTest, process: str, continuous_writes, primary_start_timeout
 ) -> None:
     # Locate primary unit.
     app = await app_name(ops_test)
@@ -172,7 +194,7 @@ async def test_kill_db_process(
 @pytest.mark.group(1)
 @pytest.mark.parametrize("process", DB_PROCESSES)
 async def test_freeze_db_process(
-    ops_test: OpsTest, process: str, continuous_writes, primary_start_timeout
+        ops_test: OpsTest, process: str, continuous_writes, primary_start_timeout
 ) -> None:
     # Locate primary unit.
     app = await app_name(ops_test)
@@ -215,7 +237,7 @@ async def test_freeze_db_process(
 @pytest.mark.group(1)
 @pytest.mark.parametrize("process", DB_PROCESSES)
 async def test_restart_db_process(
-    ops_test: OpsTest, process: str, continuous_writes, primary_start_timeout
+        ops_test: OpsTest, process: str, continuous_writes, primary_start_timeout
 ) -> None:
     # Locate primary unit.
     app = await app_name(ops_test)
@@ -249,7 +271,7 @@ async def test_restart_db_process(
 @pytest.mark.parametrize("process", DB_PROCESSES)
 @pytest.mark.parametrize("signal", ["SIGTERM", "SIGKILL"])
 async def test_full_cluster_restart(
-    ops_test: OpsTest, process: str, signal: str, continuous_writes, restart_policy, loop_wait
+        ops_test: OpsTest, process: str, signal: str, continuous_writes, restart_policy, loop_wait
 ) -> None:
     """This tests checks that a cluster recovers from a full cluster restart.
 
@@ -311,10 +333,10 @@ async def test_full_cluster_restart(
 
 @pytest.mark.group(1)
 async def test_forceful_restart_without_data_and_transaction_logs(
-    ops_test: OpsTest,
-    continuous_writes,
-    primary_start_timeout,
-    wal_settings,
+        ops_test: OpsTest,
+        continuous_writes,
+        primary_start_timeout,
+        wal_settings,
 ) -> None:
     """A forceful restart with deleted data and without transaction logs (forced clone)."""
     # Locate primary unit.
@@ -399,7 +421,7 @@ async def test_forceful_restart_without_data_and_transaction_logs(
 
 @pytest.mark.group(1)
 async def test_network_cut(
-    ops_test: OpsTest, continuous_writes, primary_start_timeout, chaos_mesh
+        ops_test: OpsTest, continuous_writes, primary_start_timeout, chaos_mesh
 ) -> None:
     """Completely cut and restore network."""
     # Locate primary unit.
@@ -460,6 +482,7 @@ async def test_network_cut(
 
     await is_cluster_updated(ops_test, primary_name)
 
+
 @pytest.mark.group(1)
 async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     """Scale the database to zero units and scale up again."""
@@ -483,7 +506,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await scale_application(ops_test, SECOND_APP_NAME, 0)
     logger.info("---------------------------------------------  re use")
 
-    original_pvc, updated_pvc = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
+    storage, updated_pvc = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
     logger.info("=---------------------------- sleep")
     sleep(60 * 5)
     logger.info(f" ------------scale-appp----------")
@@ -498,7 +521,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     logger.info(f"---------- apply get_pv")
     pv = get_pv(ops_test, app)
     logger.info(f"---------- sleep")
-    sleep(60*10)
+    sleep(60 * 10)
 
     logger.info(f"---------- updated pvc")
     delete_pvc(ops_test, updated_pvc)
@@ -507,9 +530,8 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     remove_pv_claimref(ops_test, pv_config=pv)
 
     logger.info(f"---------- apply original")
-    apply_pvc_config(ops_test, pvc_config=original_pvc)
-    second_pv = get_pv(ops_test, SECOND_APP_NAME)
-    change_pv_reclaim_policy(ops_test,pv_config=second_pv, policy="Delete")
+    apply_pvc_config(ops_test, pvc_config=storage.original.pvc)
+    change_pv_reclaim_policy(ops_test, pv_config=storage.secondary.pv, policy="Delete")
 
     logger.info(f"---------- scale 1")
     await scale_application(ops_test, app, 1)
@@ -519,7 +541,6 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
 
     logger.info(f"---------- check_writes")
     await check_writes(ops_test)
-
 
     # second_volume_data = get_pv_and_pvc(ops_test, second_app)
     # app_volume_data =get_pv_and_pvc(ops_test, app)
@@ -581,42 +602,43 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
 
 async def reuse_storage(ops_test, application: str, secondary_application: str):
     logger.info("-- second_volume_data")
-    second_volume_data = {
-        "pv": get_pv(ops_test, f"{secondary_application}-0"),
-        "pvc": get_pvc(ops_test, f"{secondary_application}-0")
-    }
-    logger.info("-- app_volume_data")
-    app_volume_data = {
-        "pv": get_pv(ops_test, f"{application}-0"),
-        "pvc": get_pvc(ops_test, f"{application}-0")
-    }
-    logger.info(f" second volumeName = {second_volume_data['pvc'].spec.volumeName}")
-    logger.info(f" second path = {second_volume_data['pv'].spec.hostPath.path}")
-    logger.info(f" second pvc namespace = {second_volume_data['pvc'].metadata.namespace}")
+    storage = Storage(
+        primary=Storage.Volume(
+            pvc=get_pvc(ops_test, f"{application}-0"),
+            pv=get_pv(ops_test, f"{application}-0")
+        ),
+        secondary=Storage.Volume(
+            pv=get_pv(ops_test, f"{secondary_application}-0"),
+            pvc=get_pvc(ops_test, f"{secondary_application}-0"),
+        ),
+    )
 
-    logger.info(f" app volumeName = {app_volume_data['pvc'].spec.volumeName}")
-    logger.info(f" app path = {app_volume_data['pv'].spec.hostPath.path}")
-    logger.info(f" app pvc namespace = {app_volume_data['pvc'].metadata.namespace}")
+    logger.info(f" second volumeName = {storage.secondary.pvc.spec.volumeName}")
+    logger.info(f" second path = {storage.secondary.pv.spec.hostPath.path}")
+    logger.info(f" second pvc namespace = {storage.secondary.pvc.metadata.namespace}")
 
-    v = second_volume_data["pv"]
-    second_volume_data["pv"] = change_pv_reclaim_policy(ops_test, pv_config=second_volume_data["pv"], policy="Retain")
+    logger.info(f" app volumeName = {storage.primary.pvc.spec.volumeName}")
+    logger.info(f" app path = {storage.primary.pv.spec.hostPath.path}")
+    logger.info(f" app pvc namespace = {storage.primary.pvc.metadata.namespace}")
+
+
+    changed_secondary_pv = change_pv_reclaim_policy(ops_test, pv_config=storage.secondary.pv, policy="Retain")
     logger.info("-- remove_application")
     await ops_test.model.remove_application(secondary_application, block_until_done=True)
     # logger.info("=---------------------------- sleep")
     # sleep(60*3)
-    delete_pvc(ops_test, pvc=second_volume_data["pvc"])
-    original_pcv = app_volume_data["pvc"]
-    logger.info(f"-- change_pvc_pv volumeName ={original_pcv.spec.volumeName}")
+    delete_pvc(ops_test, pvc=storage.secondary.pvc)
+    logger.info(f"-- change_pvc_pv volumeName ={storage.original.pvc.spec.volumeName}")
     # logger.info("=---------------------------- sleep")
     # sleep(60 * 3)
-    pvc_config = change_pvc_pv_name(app_volume_data["pvc"], second_volume_data["pv"].metadata.name)
+    pvc_config = change_pvc_pv_name(storage.primary.pvc, changed_secondary_pv.metadata.name)
     logger.info(f"-- volumeName ={pvc_config.spec.volumeName}")
     # logger.info("=---------------------------- sleep")
     # sleep(60 * 3)
-    delete_pvc(ops_test, pvc=app_volume_data["pvc"])
+    delete_pvc(ops_test, pvc=storage.primary.pvc)
     # logger.info("=---------------------------- sleep")
     # sleep(60 * 5)
-    remove_pv_claimref(ops_test, pv_config=second_volume_data["pv"])
+    remove_pv_claimref(ops_test, pv_config=storage.secondary.pv)
     # logger.info("=---------------------------- sleep")
     # sleep(60 * 5)
 
@@ -624,5 +646,6 @@ async def reuse_storage(ops_test, application: str, secondary_application: str):
     apply_pvc_config(ops_test, pvc_config=pvc_config)
 
     logger.info(f" updated volumeName = {pvc_config.spec.volumeName}")
-    logger.info(f" original volumeName = {original_pcv.spec.volumeName}")
-    return original_pcv, pvc_config
+    logger.info(f" original volumeName = {storage.original.pvc.spec.volumeName}")
+    return storage, pvc_config
+
