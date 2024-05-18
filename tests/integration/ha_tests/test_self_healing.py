@@ -71,9 +71,14 @@ class Storage:
             self.pvc = pvc
 
     def __init__(self, primary: Volume, secondary: Volume):
+        self.pvc_updated = None
         self.volumeName = primary.pv.metadata.name
         self.primary = primary
         self.secondary = secondary
+
+    def set_pvc_updated(self, pvc: PersistentVolumeClaim):
+        self.pvc_updated = pvc
+
 
 def delete_pvc(ops_test: OpsTest, pvc: PersistentVolumeClaim):
     client = Client(namespace=ops_test.model.name)
@@ -494,12 +499,12 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await start_continuous_writes(ops_test, app)
 
     # Get the connection string to connect to the database using the read/write endpoint.
-    # connection_string = await build_connection_string(
-    #     ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
-    # )
+    connection_string = await build_connection_string(
+        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
+    )
 
-    # logger.info("connect to DB and create test table")
-    # await create_test_data(connection_string)
+    logger.info("connect to DB and create test table")
+    await create_test_data(connection_string)
 
     # Scale the database to zero units.
     logger.info("scaling database to zero units")
@@ -507,7 +512,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await scale_application(ops_test, SECOND_APP_NAME, 0)
     logger.info("---------------------------------------------  re use")
 
-    storage, updated_pvc = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
+    storage = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
     logger.info(f" ------------scale-appp----------")
     await scale_application(ops_test, app, 1, is_blocked=True)
     logger.info(f" ------------scale-appp blocked----------")
@@ -522,9 +527,9 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # logger.info(f"---------- sleep --------------------")
     # sleep(60*120)
 
-    updated_pvc.spec.volumeName = storage.volumeName
-    new_pvc = copy.deepcopy(updated_pvc)
-    delete_pvc(ops_test, updated_pvc)
+    storage.pvc_updated.spec.volumeName = storage.volumeName
+    new_pvc = copy.deepcopy(storage.pvc_updated)
+    delete_pvc(ops_test, storage.pvc_updated)
     remove_pv_claimref(ops_test, pv_config=storage.secondary.pv)
     remove_pv_claimref(ops_test, pv_config=storage.primary.pv)
 
@@ -540,6 +545,9 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
 
     logger.info(f"---------- scale 1")
     await scale_application(ops_test, app, 1)
+
+    logger.info(f"---------- validate test data")
+    await validate_test_data(connection_string)
 
     # logger.info("check test database data")
     # await validate_test_data(connection_string)
@@ -605,7 +613,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # await check_writes(ops_test)
 
 
-async def reuse_storage(ops_test, application: str, secondary_application: str):
+async def reuse_storage(ops_test, application: str, secondary_application: str) -> Storage:
     logger.info("-- second_volume_data")
     storage = Storage(
         primary=Storage.Volume(
@@ -641,5 +649,6 @@ async def reuse_storage(ops_test, application: str, secondary_application: str):
 
     logger.info(f" updated volumeName = {pvc_config.spec.volumeName}")
     logger.info(f" original volumeName = {storage.volumeName}")
-    return storage, pvc_config
+    storage.set_pvc_updated(pvc_config)
+    return storage
 
