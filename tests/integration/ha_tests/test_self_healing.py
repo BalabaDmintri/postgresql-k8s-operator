@@ -120,7 +120,8 @@ def change_pvc_pv_name(pvc_config: PersistentVolumeClaim, pv_name_new: str):
 def apply_pvc_config(ops_test: OpsTest, pvc_config: PersistentVolumeClaim):
     client = Client(namespace=ops_test.model.name)
     pvc_config.metadata.managedFields = None
-    client.apply(pvc_config, namespace=ops_test.model.name, field_manager="lightkube")
+    d = client.apply(pvc_config, namespace=ops_test.model.name, field_manager="lightkube")
+    logger.info(f"------------------   apply resp = {d}")
 
 
 @pytest.mark.group(1)
@@ -493,12 +494,12 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await start_continuous_writes(ops_test, app)
 
     # Get the connection string to connect to the database using the read/write endpoint.
-    connection_string = await build_connection_string(
-        ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
-    )
+    # connection_string = await build_connection_string(
+    #     ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
+    # )
 
-    logger.info("connect to DB and create test table")
-    await create_test_data(connection_string)
+    # logger.info("connect to DB and create test table")
+    # await create_test_data(connection_string)
 
     # Scale the database to zero units.
     logger.info("scaling database to zero units")
@@ -521,6 +522,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     logger.info(f"----------  pvc ==== {updated_pvc}")
     delete_pvc(ops_test, updated_pvc)
     remove_pv_claimref(ops_test, pv_config=storage.secondary.pv)
+    remove_pv_claimref(ops_test, pv_config=storage.primary.pv)
 
     logger.info(f"----------  original pvc ==== {storage.original.pvc}")
     logger.info(f"---------- apply original")
@@ -612,31 +614,20 @@ async def reuse_storage(ops_test, application: str, secondary_application: str):
         ),
     )
 
-    logger.info(f" second volumeName = {storage.secondary.pvc.spec.volumeName}")
-    logger.info(f" second path = {storage.secondary.pv.spec.hostPath.path}")
-    logger.info(f" second pvc namespace = {storage.secondary.pvc.metadata.namespace}")
-
-    logger.info(f" app volumeName = {storage.primary.pvc.spec.volumeName}")
-    logger.info(f" app path = {storage.primary.pv.spec.hostPath.path}")
-    logger.info(f" app pvc namespace = {storage.primary.pvc.metadata.namespace}")
-
     storage.secondary.pv = change_pv_reclaim_policy(ops_test, pv_config=storage.secondary.pv, policy="Retain")
     storage.primary.pv = change_pv_reclaim_policy(ops_test, pv_config=storage.primary.pv, policy="Retain")
+
     logger.info("-- remove_application")
     await ops_test.model.remove_application(secondary_application, block_until_done=True)
-    # logger.info("=---------------------------- sleep")
-    # sleep(60*3)
+
     delete_pvc(ops_test, pvc=storage.secondary.pvc)
-    logger.info(f"-- change_pvc_pv volumeName ={storage.original.pvc.spec.volumeName}")
-    # logger.info("=---------------------------- sleep")
-    # sleep(60 * 3)
+
     pvc_config = change_pvc_pv_name(storage.primary.pvc, storage.secondary.pv.metadata.name)
+
     logger.info(f"-- volumeName ={pvc_config.spec.volumeName}")
-    # logger.info("=---------------------------- sleep")
-    # sleep(60 * 3)
+
     delete_pvc(ops_test, pvc=storage.primary.pvc)
-    # logger.info("=---------------------------- sleep")
-    # sleep(60 * 5)
+
     remove_pv_claimref(ops_test, pv_config=storage.secondary.pv)
     # logger.info("=---------------------------- sleep")
     # sleep(60 * 5)
