@@ -519,7 +519,9 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     await scale_application(ops_test, app, 0)
 
     logger.info(f"---------- updated pvc")
-    logger.info(f"----------  pvc ==== {updated_pvc}")
+    logger.info(f"---------- sleep --------------------")
+    sleep(60*120)
+
     delete_pvc(ops_test, updated_pvc)
     remove_pv_claimref(ops_test, pv_config=storage.secondary.pv)
     remove_pv_claimref(ops_test, pv_config=storage.primary.pv)
