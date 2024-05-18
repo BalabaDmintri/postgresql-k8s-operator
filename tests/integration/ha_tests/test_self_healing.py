@@ -529,6 +529,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # logger.info("===========    sleep ===============")
     # sleep(60*20)
     change_pv_reclaim_policy(ops_test, pv_config=storage.secondary.pv, policy="Delete")
+    change_pv_reclaim_policy(ops_test, pv_config=storage.primary.pv, policy="Delete")
 
     logger.info(f"---------- scale 1")
     await scale_application(ops_test, app, 1)
