@@ -639,6 +639,6 @@ async def reuse_storage(ops_test, application: str, secondary_application: str):
     apply_pvc_config(ops_test, pvc_config=pvc_config)
 
     logger.info(f" updated volumeName = {pvc_config.spec.volumeName}")
-    logger.info(f" original volumeName = {storage.original.pvc.spec.volumeName}")
+    logger.info(f" original volumeName = {storage.volumeName}")
     return storage, pvc_config
 
