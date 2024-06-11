@@ -62,6 +62,7 @@ PATRONI_PROCESS = "/usr/bin/patroni"
 POSTGRESQL_PROCESS = "postgres"
 DB_PROCESSES = [POSTGRESQL_PROCESS, PATRONI_PROCESS]
 MEDIAN_ELECTION_TIME = 10
+THIRD_PARTY_STORAGE_MESSAGE = "Failed to start postgresql. The storage belongs to a third-party cluster"
 
 
 class Storage:
@@ -510,49 +511,32 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     logger.info("scaling database to zero units")
     await scale_application(ops_test, app, 0)
     await scale_application(ops_test, SECOND_APP_NAME, 0)
-    logger.info("---------------------------------------------  re use")
 
+    logger.info(f"reuse storage")
     storage = await reuse_storage(ops_test, application=app, secondary_application=SECOND_APP_NAME)
-    logger.info(f" ------------scale-appp----------")
+
+    logger.info(f"scaling database to one unit")
     await scale_application(ops_test, app, 1, is_blocked=True)
-    logger.info(f" ------------scale-appp blocked----------")
-    assert "blocked" in [
-        unit.workload_status
+
+    logger.info(f"checking blocked status using third-party cluster storage")
+    assert any(
+        unit.workload_status == "blocked" and unit.workload_status_message == THIRD_PARTY_STORAGE_MESSAGE
         for unit in ops_test.model.applications[app].units
-    ], "Application not blocked wit third-party of storage"
-    logger.info(f"---------- scale 0")
+    ), "The blocked status check should be checked along with the message"
+
+    logger.info(f"scaling dataset to zero unit")
     await scale_application(ops_test, app, 0)
 
-    logger.info(f"---------- updated pvc")
-    # logger.info(f"---------- sleep --------------------")
-    # sleep(60*120)
+    logger.info(f"restore own storage")
+    await restore_own_storage(ops_test, storage)
 
-    storage.pvc_updated.spec.volumeName = storage.volumeName
-    new_pvc = copy.deepcopy(storage.pvc_updated)
-    delete_pvc(ops_test, storage.pvc_updated)
-    remove_pv_claimref(ops_test, pv_config=storage.secondary.pv)
-    remove_pv_claimref(ops_test, pv_config=storage.primary.pv)
-
-    logger.info(f"----------  original pvc ==== {storage.volumeName}")
-    logger.info(f"---------- apply original")
-    apply_pvc_config(ops_test, pvc_config=new_pvc)
-
-    # logger.info("===========    sleep ===============")
-    # sleep(60*20)
-    logger.info(f"---------- change_pv_reclaim_policy")
-    change_pv_reclaim_policy(ops_test, pv_config=storage.secondary.pv, policy="Delete")
-    change_pv_reclaim_policy(ops_test, pv_config=storage.primary.pv, policy="Delete")
-
-    logger.info(f"---------- scale 1")
+    logger.info(f"scaling to one unit")
     await scale_application(ops_test, app, 1)
 
-    logger.info(f"---------- validate test data")
+    logger.info("check test database data")
     await validate_test_data(connection_string)
 
-    # logger.info("check test database data")
-    # await validate_test_data(connection_string)
-
-    logger.info(f"---------- check_writes")
+    logger.info(f"check check_writes")
     await check_writes(ops_test)
 
     # second_volume_data = get_pv_and_pvc(ops_test, second_app)
@@ -613,6 +597,18 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     # await check_writes(ops_test)
 
 
+async def restore_own_storage(ops_test, storage: Storage):
+    storage.pvc_updated.spec.volumeName = storage.volumeName
+    new_pvc = copy.deepcopy(storage.pvc_updated)
+    delete_pvc(ops_test, storage.pvc_updated)
+    remove_pv_claimref(ops_test, pv_config=storage.secondary.pv)
+    remove_pv_claimref(ops_test, pv_config=storage.primary.pv)
+    apply_pvc_config(ops_test, pvc_config=new_pvc)
+    logger.info(f"---------- change_pv_reclaim_policy")
+    change_pv_reclaim_policy(ops_test, pv_config=storage.secondary.pv, policy="Delete")
+    change_pv_reclaim_policy(ops_test, pv_config=storage.primary.pv, policy="Delete")
+
+
 async def reuse_storage(ops_test, application: str, secondary_application: str) -> Storage:
     logger.info("-- second_volume_data")
     storage = Storage(
@@ -651,4 +647,3 @@ async def reuse_storage(ops_test, application: str, secondary_application: str) 
     logger.info(f" original volumeName = {storage.volumeName}")
     storage.set_pvc_updated(pvc_config)
     return storage
-
