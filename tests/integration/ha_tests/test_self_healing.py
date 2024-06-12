@@ -139,7 +139,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # is a pre-existing cluster.
     if not await app_name(ops_test):
         wait_for_apps = True
-        await build_and_deploy(ops_test, 1, wait_for_idle=False)
+        await build_and_deploy(ops_test, 3, wait_for_idle=False)
         await build_and_deploy(ops_test, 1, database_app_name=SECOND_APP_NAME, wait_for_idle=False)
     # Deploy the continuous writes application charm if it wasn't already deployed.
     if not await app_name(ops_test, APPLICATION_NAME):
@@ -524,7 +524,7 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
         for unit in ops_test.model.applications[app].units
     ), "The blocked status check should be checked along with the message"
 
-    logger.info(f"scaling dataset to zero unit")
+    logger.info(f"scaling database to zero unit")
     await scale_application(ops_test, app, 0)
 
     logger.info(f"restore own storage")
@@ -539,63 +539,32 @@ async def test_scaling_to_zero(ops_test: OpsTest, continuous_writes) -> None:
     logger.info(f"check check_writes")
     await check_writes(ops_test)
 
-    # second_volume_data = get_pv_and_pvc(ops_test, second_app)
-    # app_volume_data =get_pv_and_pvc(ops_test, app)
-    #
-    # retain_volume(
-    #     ops_test,
-    #     pv_name=second_volume_data.get("pv_name"),
-    #     patch_data="'{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Retain\"}}'",
-    # )
-    # await ops_test.model.remove_application(SECOND_APP_NAME, block_until_done=True)
-    # delete_pvc(ops_test, pvc_name=second_volume_data["pvc_name"])
-    #
-    # pvc_config = get_pvc_config(ops_test, pvc_name=app_volume_data["pvc_name"])
-    # logger.info(pvc_config)
-    # logger.info("---------------------------------------------------")
-    # pvc_config["spec"]["volumeName"] = second_volume_data["pv_name"]
-    # del pvc_config["pv.kubernetes.io/bind-completed"]
-    # delete_pvc(ops_test, pvc_name=second_volume_data["pvc_name"])
-    # logger.info(pvc_config)
-    # logger.info("---------------------------------------------------")
-    #
-    # logger.info(f"----- apply conf {pvc_config}")
-    # retain_volume(
-    #     ops_test,
-    #     pv_name=second_volume_data.get("pv_name"),
-    #     patch_data="'{\"spec\":{\"claimRef\":null}}'",
-    # )
-    #
-    # logger.info(f"----- apply conf {pvc_config}")
-    # apply_conf(pvc_config)
+    # Scale the database to three units.
+    logger.info("scaling database to three units")
+    await scale_application(ops_test, app, 3)
 
-    # # Scale the database to three units.
-    # logger.info("scaling database to three units")
-    # await scale_application(ops_test, app, 3)
-    #
-    # # Verify all units are up and running.
-    # logger.info("waiting for the database service to start in all units")
-    # for unit in ops_test.model.applications[app].units:
-    #     assert await is_postgresql_ready(
-    #         ops_test, unit.name
-    #     ), f"unit {unit.name} not restarted after cluster restart."
-    #
-    # logger.info("checking whether writes are increasing")
-    # await are_writes_increasing(ops_test)
-    #
-    # # Verify that all units are part of the same cluster.
-    # logger.info("checking whether all units are part of the same cluster")
-    # member_ips = await fetch_cluster_members(ops_test)
-    # ip_addresses = [
-    #     await get_unit_address(ops_test, unit.name)
-    #     for unit in ops_test.model.applications[app].units
-    # ]
-    # assert set(member_ips) == set(ip_addresses), "not all units are part of the same cluster."
-    #
-    # # Verify that no writes to the database were missed after stopping the writes.
-    # logger.info("checking whether no writes to the database were missed after stopping the writes")
-    # await check_writes(ops_test)
+    # Verify all units are up and running.
+    logger.info("waiting for the database service to start in all units")
+    for unit in ops_test.model.applications[app].units:
+        assert await is_postgresql_ready(
+            ops_test, unit.name
+        ), f"unit {unit.name} not restarted after cluster restart."
 
+    logger.info("checking whether writes are increasing")
+    await are_writes_increasing(ops_test)
+
+    # Verify that all units are part of the same cluster.
+    logger.info("checking whether all units are part of the same cluster")
+    member_ips = await fetch_cluster_members(ops_test)
+    ip_addresses = [
+        await get_unit_address(ops_test, unit.name)
+        for unit in ops_test.model.applications[app].units
+    ]
+    assert set(member_ips) == set(ip_addresses), "not all units are part of the same cluster."
+
+    # Verify that no writes to the database were missed after stopping the writes.
+    logger.info("checking whether no writes to the database were missed after stopping the writes")
+    await check_writes(ops_test)
 
 async def restore_own_storage(ops_test, storage: Storage):
     storage.pvc_updated.spec.volumeName = storage.volumeName
